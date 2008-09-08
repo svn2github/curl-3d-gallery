@@ -1,0 +1,87 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl 6.0 applet}
+{curl-file-attributes character-encoding = "shift-jis"}
+{applet
+    manifest = "manifest.mcurl",
+    {compiler-directives careful? = true},
+||--    locale = "en",
+    resource-directory = "resources",
+    translations-file = "messages.xml"
+}
+
+{value
+    {if not {process-privileged?} then
+        let dia :Dialog = {Dialog
+                              {Frame
+                                  width = 550px,
+                                  height = 250px,
+                                  background = {LinearGradientFillPattern
+                                                   {Fraction2d 0, 0},
+                                                   {Fraction2d 0, 1},
+                                                   {Spectrum.from-endpoints
+                                                       "white",
+                                                       "lightgray"
+                                                   }
+                                               },
+                                  {VBox font-size = 10pt, margin =10pt,
+                                      {text font-size = 12pt, font-weight = 
+                                          "bold", color = "gray", Curl 3D Galleryを始めるには特権が必要です},
+                                      {Fill height = 25pt},
+                                      {paragraph
+                                          {paragraph font-weight = "bold", 
+                                              特権の設定方法}
+                                          {enumerate
+                                              {item スタートメニュー　→　 
+                                                  すべてのプログラム　→　Curl RTE　→　Curlコントロールパネル をクリック。}
+                                              {item Curlコントロールパネルが開いたら　『セキュリティ』タブを選択して、『ホスト追加』ボタンをクリック。}
+                                              {item アプリケーションを提供しているホスト名を、{bold color = "red" , http://を抜いた形で入力し}、OKを押します。
+                                                  {br} * 例えば、http://developers.curlap.com/test/start.curl 
+                                                  ならば developers.curlap.com/testです。}
+                                          }
+                                      },
+                                      {Fill height = 15pt},
+                                      {HBox {Fill}, {CommandButton label = "閉じる",
+                                                        {on e:Action do
+                                                            {exit}
+                                                        }
+                                                    }
+                                      }
+                                  }
+                              },
+                              {on WindowClose do
+                                  {exit}
+                              }
+                          }
+        {dia.show title = "Curl 3D Gallery"}
+        {exit}
+    }
+}
+
+{import * from CONTENTS}
+
+{document-style PlainDocument}
+
+{value
+    let contents:Contents = {Contents.get-singleton}
+    {contents.initialize}
+    contents
+}
+
+{{get-the-applet}.set-title {lmessage ３次元ギャラリー}}

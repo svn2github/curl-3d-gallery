@@ -1,0 +1,328 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+|| ############################################################
+|| Log4Curlオブジェクト(グローバル変数)
+|| 注意：ログを出力するときは必ずこれを使うこと!!!
+|| ############################################################
+{let public log4c:Log4Curl = {Log4Curl.get-log4c}}
+
+
+|| ############################################################
+|| 列挙型 ログ優先度 (下に行くほど優先度が高い)
+|| ############################################################
+{define-enum public LogPriority
+    Trace = "TRACE", || トレース  
+    Debug = "DEBUG", || デバッグ  
+    Info  = "INFO",  || インフォ  
+    Warn  = "WARN",  || 警告      
+    Error = "ERROR", || エラー    
+    Fatal = "FATAL", || 致命的   
+    None  = "NONE"   || 出力なし  
+}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  Log4jを模したログクラス                                                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     Log4jを模したログクラス。
+                 }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+    {notes
+        優先度によりメッセージを出力します。
+        下に行くほど優先度が高くなる。
+    }
+    {usage
+        \{log4c.trace "メッセージ"\}         トレースログを出力
+        \{log4c.debug "メッセージ"\}         デバッグログを出力
+        \{log4c.info  "メッセージ"\}         インフォログを出力
+        \{log4c.warn  "メッセージ"\}         警告ログを出力
+        \{log4c.error "メッセージ"\}         エラーログを出力
+        \{log4c.fatal "メッセージ"\}         致命的ログを出力
+        \{log4c.none  "メッセージ"\}         ログ出力なし
+    }
+}
+|########################################################################################|
+{define-class public Log4Curl
+  
+  |###|{doc-next {purpose タイムスタンプの出力有無？}}|###|
+  field public time-stamp?    :bool = true
+  
+  |###|{doc-next {purpose プライオリティ名の出力有無？}}|###|
+  field public priority-name? :bool = true
+  
+  |###|{doc-next {purpose 出力対象優先度}
+         {notes
+             本変数を変更することにより出力ログレベルの変更が可能
+         }
+       }
+  |###|
+  field public log-priority   :LogPriority = LogPriority.Trace
+  
+  |###|{doc-next {purpose Log4Curlオブジェクト}}|###|
+  let public log4c:#Log4Curl
+
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose Log4Curlのコンストラクタ                                    }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     初期処理を行う。                                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {constructor private {default}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose Log4Curlオブジェクトを返すファクトリー                      }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     Log4Curlオブジェクトを返す。                        }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        Log4Curlオブジェクト
+    }
+  }
+  |######################################################################################|
+  {factory public {get-log4c}:Log4Curl
+    {if Log4Curl.log4c == null then
+        set Log4Curl.log4c = {Log4Curl}
+    }
+    {return {non-null Log4Curl.log4c}}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose トレースログの出力                                          }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     トレースログを出力します。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter msg, 出力内容                                             }
+  }
+  |######################################################################################|
+  {method public {trace msg:any}:void
+    {self._outputLog logPriority=LogPriority.Trace, msg=msg}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose デバッグログの出力                                          }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     デバッグログを出力します。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter msg, 出力内容                                             }
+  }
+  |######################################################################################|
+  {method public {debug msg:any}:void
+    {self._outputLog logPriority=LogPriority.Debug, msg=msg}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose インフォログの出力                                          }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     インフォログを出力します。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter msg, 出力内容                                             }
+  }
+  |######################################################################################|
+  {method public {info msg:any}:void
+    {self._outputLog logPriority=LogPriority.Info, msg=msg}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ワーニングログの出力                                        }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ワーニングログを出力します。                        }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter msg, 出力内容                                             }
+  }
+  |######################################################################################|
+  {method public {warn msg:any}:void
+    {self._outputLog logPriority=LogPriority.Warn, msg=msg}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose エラーログの出力                                            }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     エラーログを出力します。                            }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter msg, 出力内容                                             }
+  }
+  |######################################################################################|
+  {method public {error msg:any}:void
+    {self._outputLog logPriority=LogPriority.Error, msg=msg}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 致命的ログの出力                                            }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     致命的ログを出力します。                            }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter msg, 出力内容                                             }
+  }
+  |######################################################################################|
+  {method public {fatal msg:any}:void
+    {self._outputLog logPriority=LogPriority.Fatal, msg=msg}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 設定に合わせたログの出力                                    }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     設定に合わせたログを出力します。                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter logPriority, ログ優先度                                   }
+    {parameter msg, 出力内容                                             }
+  }
+  |######################################################################################|
+  {method private {_outputLog logPriority:LogPriority=LogPriority.None, msg:any=null,  ...}
+    
+    || プライオリティが、高い場合のみ出力
+    {if logPriority.index >= self.log-priority.index then
+        let out : String = ""
+        
+        || メッセージ生成
+        set out = {self._createMessage logPriority.value, msg}
+        
+        || 出力処理
+        {self._output out}
+    }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 出力用文字列の生成                                          }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     出力用文字列を生成します。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter logPriority, ログ優先度                                   }
+    {parameter msg, 出力内容                                             }
+    {return-vals
+        出力用文字列
+    }
+  }
+  |######################################################################################|
+  {method private {_createMessage priority:String, msg:any}:String
+    
+    || 出力文字連結用
+    let out:StringBuf = {StringBuf}
+    
+    || プライオリティの出力
+    {if self.priority-name? then
+        {out.concat "[" & priority & "]"}
+        {if priority == "INFO" or priority == "WARN" then
+            {out.concat " "}
+        }
+    }
+    
+    || タイムスタンプの出力
+    {if self.time-stamp? then
+        {out.concat " #" & {self._getTimeStamp} & "#"}
+    }
+    {out.concat " - "}
+    
+    || メッセージの出力
+    {with-compiler-directives allow-implicit-any-casts? = true do
+        {out.concat msg}
+    }
+    
+    {return {out.to-String}}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose タイムスタンプ文字列の取得                                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     タイムスタンプ文字列を取得します。
+                     　(例) 2005/03/01 23:59:59.33
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        タイムスタンプ文字列
+    }
+  }
+  |######################################################################################|
+  {method private {_getTimeStamp}:String
+    let dateTime:DateTime = {DateTime}
+    let strTimeStamp:String = {format 
+                                  "%4d/%02d/%02d %02d:%02d:%02d.%03d", 
+                                  dateTime.info.year, 
+                                  dateTime.info.month,
+                                  dateTime.info.day,
+                                  dateTime.info.hour,
+                                  dateTime.info.minute,
+                                  dateTime.info.second,
+                                  dateTime.info.millisecond
+                              }
+    {return strTimeStamp}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 出力処理                                                    }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     文字列を出力します。                                }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter msg, 出力文字列                                           }
+  }
+  |######################################################################################|
+  {method private {_output msg:any}
+    {output msg}
+  }
+  
+  
+}

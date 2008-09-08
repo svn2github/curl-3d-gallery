@@ -1,0 +1,129 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  描画要素：ポリライン                                                     }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ポリライン要素。
+                     複数のポリラインが保持できます。
+                 }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public PolyLineElement {inherits ModelElement}
+  
+  |###|{doc-next {purpose 座標点列の配列}}|###|
+  field public coords-array:{Array-of {Array-of Double3d}}
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 描画要素：ポリラインのコンストラクタ                        }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     初期処理を行う。                                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {constructor public {default}
+    set self.coords-array = {new {Array-of {Array-of Double3d}}}
+    {construct-super}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 自身のインスタンスを生成する                                }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     自身のインスタンスを生成する。                      }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        描画要素
+    }
+  }
+  |######################################################################################|
+  {method public {make-self}:ModelElement
+    {return {PolyLineElement}}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 自身のポリゴンを作成する                                    }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     自身のポリゴンを作成する。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter id, 要素ID                                                }
+  }
+  |######################################################################################|
+  {method public {make-polygon
+                     id:int}:void
+    
+||--    {log4c.info "PolyLineElement: ID: [" & id & "]  座標列数: " & self.coords-array.size}
+    {for coords key ii in self.coords-array do
+        
+||--        {log4c.info "PolyLineElement: ID: [" & id & "][" & ii & "]  頂点数: " & coords.size}
+        
+        let vertices:{Array-of FloatDistance3d} = {new {Array-of FloatDistance3d}}
+        {for coord key k in coords do
+            {vertices.append {Utility.Double3d2FloatDistance3d coord}}
+        }
+
+        {self.polygon-sets.append {CustomPolygonSet
+                                      id,
+                                      CustomPolygonSetType.poly-line-element,
+                                      sub-id = ii,
+                                      vertices = vertices,
+                                      fill-pattern = {FillPattern.from-color {Color.from-pixel self.color}},
+                                      primitive-type = PrimitiveType.lines}}
+    }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ポリゴンを修正する                                           }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ポリゴンを修正する。                                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {notes
+        抽象メソッドのため、処理なし
+    }
+  }
+  |######################################################################################|
+  {method public {remake-polygon}:bool
+    {return false}
+  }
+  
+  
+}

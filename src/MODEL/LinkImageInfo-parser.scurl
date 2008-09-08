@@ -1,0 +1,178 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  リンク情報のコンテンツハンドラ                                           }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     リンク情報のXML読み込みの為のコンテンツハンドラ
+                 }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public LinkImageInfoHandler {inherits DefaultHandler}
+  
+  |###|{doc-next {purpose リンク情報の配列}}|###|
+  field public link-image-infos:{Array-of LinkImageInfoObject}
+  
+  |###|{doc-next {purpose リンク情報の一時保管領域}}|###|
+  field private link-image-info:LinkImageInfoObject
+  
+  |###|{doc-next {purpose 作業用StringBuf}}|###|
+  field private data:StringBuf
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose リンク情報のコンテンツハンドラのコンストラクタ              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     初期処理を行う。                                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {constructor public {default}
+    set self.link-image-infos = {new {Array-of LinkImageInfoObject}}
+    set self.link-image-info = {LinkImageInfoObject}
+    set self.data = {StringBuf}
+    {construct-super}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ドキュメントの開始処理                                      }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ドキュメントの開始処理を行う。                      }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {start-document}:void
+    {self.link-image-infos.clear}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 要素の開始処理                                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     要素の開始処理を行う。                              }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {start-element
+                     uri:String,
+                     name:String,
+                     qname:String,
+                     atts:Attributes
+                 }:void
+    
+    {self.data.clear}
+    {switch qname
+     case "LinkImageInfo" do
+        set self.link-image-info = {LinkImageInfoObject}
+    }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 文字データ処理                                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     文字データ処理を行う。                              }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {characters
+                     ch:StringBuf,
+                     start:int,
+                     length:int
+                 }:void
+    || エスケープ文字の関係があるので、{self.data.clear}は、start-elementで行う
+||--    {self.data.clear}
+    {self.data.concat {ch.substr start, length}}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 要素の終了処理                                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     要素の終了処理を行う。                              }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {end-element
+                     uri:String,
+                     name:String,
+                     qname:String
+                 }:void
+
+    {with-compiler-directives allow-any-calls? = true do
+        
+        {switch qname
+            
+         case "id" do           set self.link-image-info.id     = {self.data.to-int}
+         case "title" do        set self.link-image-info.title  = {self.data.to-String}
+         case "face" do         set self.link-image-info.face   = {self.data.to-int}
+         case "xx" do           set self.link-image-info.xx     = {self.data.to-double}
+         case "yy" do           set self.link-image-info.yy     = {self.data.to-double}
+         case "ww" do           set self.link-image-info.ww     = {self.data.to-double}
+         case "hh" do           set self.link-image-info.hh     = {self.data.to-double}
+         case "offset" do       set self.link-image-info.offset = {self.data.to-double}
+         case "image" do        set self.link-image-info.image  = {self.data.to-String}
+         case "jump" do         set self.link-image-info.jump   = {self.data.to-String}
+         case "info" do         set self.link-image-info.info   = {self.data.to-String}
+            
+         case "LinkImageInfo" do
+            {self.link-image-infos.append self.link-image-info}
+        }
+        
+    }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ドキュメント終了処理                                        }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ドキュメント終了処理を行う。                        }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {end-document}:void
+  }
+  
+  
+}

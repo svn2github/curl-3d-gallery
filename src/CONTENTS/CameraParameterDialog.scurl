@@ -1,0 +1,297 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+|########################################################################################|
+{doc-next
+    {purpose  カメラ情報設定ダイアログ                                                 }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     カメラに関する情報設定を行います。    }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public CameraParameterDialog {inherits Dialog}
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose カメラ情報設定ダイアログのコンストラクタ                    }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     画面レイアウトを作成する。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter graphic, SceneGraphic                                     }
+  }
+  |######################################################################################|
+  {constructor public {default
+                          graphic:CustomSceneGraphic,
+                          ...}
+    
+    let frame:Frame             = {Frame
+                                      color = Contents.text-color,
+                                      background = {manifest-url "image", "ControlPanel"}
+                                  }
+    let scene:CustomScene       = graphic.scene asa CustomScene
+    
+    {self.add frame}
+
+    || 現状値取得
+
+    || 位置情報
+    let (xx:Distance, yy:Distance, zz:Distance) = {graphic.get-eye-position}
+    || 視野角
+    let ang:Angle                               = {graphic.get-field-of-view}
+    || 方位角、仰角
+    let (azimuth:Angle, elevation:Angle)        = {graphic.get-angle-view}
+    || クリップ面（近・遠）
+    let (near:Distance, far:Distance)           = {graphic.get-clipping}
+    || 移動量
+    let step-dist:Distance                      = {graphic.get-move-step-dist}
+    || 回転量
+    let step-angle:Angle                        = {graphic.get-rotate-step-angle}
+    || イベント最大数
+    let event-max:int                           = {graphic.get-event-max-size}
+    || マウス比率
+    let mouse-step:double                       = {graphic.get-mouse-step-ratio}
+    || 霧効果有無
+    let fog?:bool                               = {scene.get-fog}
+    || 霧開始距離
+    let fog-start:Distance                      = {scene.get-fog-start}
+    || 霧終了距離
+    let fog-end:Distance                        = {scene.get-fog-end}
+    || アニメーション
+    let (anime?:bool, anime-interval:Time)      = {graphic.get-animation}
+
+    let xx-str:String           = {String {{String xx           / 1mm}.to-double}}
+    let yy-str:String           = {String {{String yy           / 1mm}.to-double}}
+    let zz-str:String           = {String {{String zz           / 1mm}.to-double}}
+    let azimuth-str:String      = {String {{String azimuth      / 1deg}.to-double}}
+    let elevation-str:String    = {String {{String elevation    / 1deg}.to-double}}
+    let ang-str:String          = {String {{String ang          / 1deg}.to-double}}
+    let near-str:String         = {String {{String near         / 1mm}.to-double}}
+    let far-str:String          = {String {{String far          / 1mm}.to-double}}
+    let step-dist-str:String    = {String {{String step-dist    / 1mm}.to-double}}
+    let step-angle-str:String   = {String {{String step-angle   / 1deg}.to-double}}
+    let event-max-str:String    = {String event-max}
+    let mouse-step-str:String   = {String mouse-step}
+    let fog-start-str:String    = {String {{String fog-start    / 1m}.to-double}}
+    let fog-end-str:String      = {String {{String fog-end      / 1m}.to-double}}
+    let anime-interval-str:String = {String {{String anime-interval / 1ms}.to-double}}
+    
+    let xx-tf:TextField         = {TextField width = 25mm, halign = "right", value = xx-str,
+                                      control-content-background = {Background.from-Color {Color.from-string Contents.text-background}}}
+    let yy-tf:TextField         = {TextField width = 25mm, halign = "right", value = yy-str,
+                                      control-content-background = {Background.from-Color {Color.from-string Contents.text-background}}}
+    let zz-tf:TextField         = {TextField width = 25mm, halign = "right", value = zz-str,
+                                      control-content-background = {Background.from-Color {Color.from-string Contents.text-background}}}
+    let azimuth-tf:TextField    = {TextField width = 25mm, halign = "right", value = azimuth-str,
+                                      control-content-background = {Background.from-Color {Color.from-string Contents.text-background}}}
+    let elevation-tf:TextField  = {TextField width = 25mm, halign = "right", value = elevation-str,
+                                      control-content-background = {Background.from-Color {Color.from-string Contents.text-background}}}
+    let ang-tf:TextField        = {TextField width = 25mm, halign = "right", value = ang-str,
+                                      control-content-background = {Background.from-Color {Color.from-string Contents.text-background}}}
+    let near-tf:TextField       = {TextField width = 25mm, halign = "right", value = near-str,
+                                      control-content-background = {Background.from-Color {Color.from-string Contents.text-background}}}
+    let far-tf:TextField        = {TextField width = 25mm, halign = "right", value = far-str,
+                                      control-content-background = {Background.from-Color {Color.from-string Contents.text-background}}}
+    let step-dist-tf:TextField  = {TextField width = 25mm, halign = "right", value = step-dist-str,
+                                      control-content-background = {Background.from-Color {Color.from-string Contents.text-background}}}
+    let step-angle-tf:TextField = {TextField width = 25mm, halign = "right", value = step-angle-str,
+                                      control-content-background = {Background.from-Color {Color.from-string Contents.text-background}}}
+    let event-max-tf:TextField  = {TextField width = 25mm, halign = "right", value = event-max-str,
+                                      control-content-background = {Background.from-Color {Color.from-string Contents.text-background}}}
+    let mouse-step-tf:TextField = {TextField width = 25mm, halign = "right", value = mouse-step-str,
+                                      control-content-background = {Background.from-Color {Color.from-string Contents.text-background}}}
+    let fog-cb:CheckButton      = {CheckButton value = fog?, label = {Label
+                                                                         {lmessage 霧効果},
+                                                                         color = Contents.text-color},
+                                      control-content-background = {Background.from-Color {Color.from-string Contents.text-background}}}
+    let fog-start-tf:TextField  = {TextField width = 25mm, halign = "right", value = fog-start-str,
+                                      control-content-background = {Background.from-Color {Color.from-string Contents.text-background}}}
+    let fog-end-tf:TextField    = {TextField width = 25mm, halign = "right", value = fog-end-str,
+                                      control-content-background = {Background.from-Color {Color.from-string Contents.text-background}}}
+    let anime-cb:CheckButton    = {CheckButton value = anime?, label = {Label
+                                                                           {lmessage アニメーション},
+                                                                           color = Contents.text-color},
+                                      control-content-background = {Background.from-Color {Color.from-string Contents.text-background}}}
+    let anime-interval-tf:TextField  = {TextField width = 25mm, halign = "right", value = anime-interval-str,
+                                           control-content-background = {Background.from-Color {Color.from-string Contents.text-background}}}
+
+    let tbl:Table = {Table
+                        columns = 4}
+    {tbl.add row =  0, column = 0, {lmessage 位置}}
+    {tbl.add row =  0, column = 1, {lmessage Ｘ座標}}
+    {tbl.add row =  0, column = 2, xx-tf}
+    {tbl.add row =  0, column = 3, {lmessage mm}}
+    {tbl.add row =  1, column = 1, {lmessage Ｙ座標}}
+    {tbl.add row =  1, column = 2, yy-tf}
+    {tbl.add row =  1, column = 3, {lmessage mm}}
+    {tbl.add row =  2, column = 1, {lmessage Ｚ座標}}
+    {tbl.add row =  2, column = 2, zz-tf}
+    {tbl.add row =  2, column = 3, {lmessage mm}}
+    {tbl.add row =  3, column = 0, {lmessage 方向}}
+    {tbl.add row =  3, column = 1, {lmessage 方位角}}
+    {tbl.add row =  3, column = 2, azimuth-tf}
+    {tbl.add row =  3, column = 3, {lmessage °}}
+    {tbl.add row =  4, column = 1, {lmessage 仰角}}
+    {tbl.add row =  4, column = 2, elevation-tf}
+    {tbl.add row =  4, column = 3, {lmessage mm}}
+    {tbl.add row =  5, column = 0, {lmessage 視野角},         colspan = 2}
+    {tbl.add row =  5, column = 2, ang-tf}
+    {tbl.add row =  5, column = 3, {lmessage °}}
+    {tbl.add row =  6, column = 0, {lmessage 近クリップ面},   colspan = 2}
+    {tbl.add row =  6, column = 2, near-tf}
+    {tbl.add row =  6, column = 3, {lmessage mm}}
+    {tbl.add row =  7, column = 0, {lmessage 遠クリップ面},   colspan = 2}
+    {tbl.add row =  7, column = 2, far-tf}
+    {tbl.add row =  7, column = 3, {lmessage mm}}
+    {tbl.add row =  8, column = 0, {lmessage 移動量},         colspan = 2}
+    {tbl.add row =  8, column = 2, step-dist-tf}
+    {tbl.add row =  8, column = 3, {lmessage mm}}
+    {tbl.add row =  9, column = 0, {lmessage 回転量},         colspan = 2}
+    {tbl.add row =  9, column = 2, step-angle-tf}
+    {tbl.add row =  9, column = 3, {lmessage °}}
+    {tbl.add row = 10, column = 0, {lmessage イベント最大},   colspan = 2}
+    {tbl.add row = 10, column = 2, event-max-tf}
+    {tbl.add row = 11, column = 0, {lmessage マウス比率},     colspan = 2}
+    {tbl.add row = 11, column = 2, mouse-step-tf}
+    {tbl.add row = 12, column = 0, fog-cb,                    colspan = 2}
+    {tbl.add row = 13, column = 0, {lmessage 霧開始距離},     colspan = 2}
+    {tbl.add row = 13, column = 2, fog-start-tf}
+    {tbl.add row = 13, column = 3, {lmessage m}}
+    {tbl.add row = 14, column = 0, {lmessage 霧終了距離},     colspan = 2}
+    {tbl.add row = 14, column = 2, fog-end-tf}
+    {tbl.add row = 14, column = 3, {lmessage m}}
+    {tbl.add row = 15, column = 0, anime-cb,                  colspan = 2}
+    {tbl.add row = 16, column = 0, {lmessage 更新間隔},       colspan = 2}
+    {tbl.add row = 16, column = 2, anime-interval-tf}
+    {tbl.add row = 16, column = 3, {lmessage ms}}
+    
+    {frame.add
+        {VBox
+            margin = 5pt,
+            tbl,
+            {Fill height = 2mm},
+            {hcenter
+                {HBox
+                    spacing = 5pt,
+                    {CommandButton
+                        width = 20mm,
+                        label = {lmessage OK},
+                        control-color = {manifest-url "image", "Button"},
+                        color = Contents.text-color,
+                        {on Action do
+                            || 'OK'ボタン押下時の処理　（入力内容のチェックは割愛）
+                            set xx              = {xx-tf.value.to-double} * 1mm
+                            set yy              = {yy-tf.value.to-double} * 1mm
+                            set zz              = {zz-tf.value.to-double} * 1mm
+                            set azimuth         = {azimuth-tf.value.to-double} * 1deg
+                            set elevation       = {elevation-tf.value.to-double} * 1deg
+                            set ang             = {ang-tf.value.to-double} * 1deg
+                            set near            = {near-tf.value.to-double} * 1mm
+                            set far             = {far-tf.value.to-double} * 1mm
+                            set step-dist       = {step-dist-tf.value.to-double} * 1mm
+                            set step-angle      = {step-angle-tf.value.to-double} * 1deg
+                            set event-max       = {event-max-tf.value.to-int}
+                            set mouse-step      = {mouse-step-tf.value.to-double}
+                            set fog?            = fog-cb.value
+                            set fog-start       = {fog-start-tf.value.to-double} * 1m
+                            set fog-end         = {fog-end-tf.value.to-double} * 1m
+                            set anime?          = anime-cb.value
+                            set anime-interval  = {anime-interval-tf.value.to-double} * 1ms
+                            
+                            {graphic.set-eye-position xx, yy, zz}
+                            {graphic.set-angle-view azimuth, elevation}
+                            {graphic.set-field-of-view ang}
+                            {graphic.set-clipping near, far}
+                            {graphic.set-move-step-dist step-dist}
+                            {graphic.set-rotate-step-angle step-angle}
+                            {graphic.set-event-max-size event-max}
+                            {graphic.set-mouse-step-ratio mouse-step}
+                            {scene.set-fog fog?}
+                            {scene.set-fog-start fog-start}
+                            {scene.set-fog-end fog-end}
+                            {graphic.set-animation anime?, anime-interval}
+                            {graphic.set-camera}
+                            {graphic.update-drawable}
+                            {self.close Dialog.ok}
+                        }
+                    },
+                    {CommandButton
+                        width = 20mm,
+                        label ={lmessage キャンセル},
+                        control-color = {manifest-url "image", "Button"},
+                        color = Contents.text-color,
+                        {on Action do
+                            || 'キャンセル'ボタン押下時の処理
+                            {self.close Dialog.cancel}
+                        }
+                    }
+                }
+            }
+        }
+    }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose カメラ情報設定ダイアログ表示                                }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ダイアログを表示する。                              }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter title, ウィンドウのタイトル                               }
+    {parameter modal?, モーダルか非モーダルか                            }
+    {parameter center?, オーナーの前で中央揃えするかどうか               }
+    {parameter owner, オーナー                                           }
+    {parameter style, ダイアログ・スタイル                               }
+    {parameter large-icon, 大きなアイコン・イメージ                      }
+    {parameter small-icon, 小さなアイコン・イメージ                      }
+  }
+  |######################################################################################|
+  {method public {show
+                     title:String = "",
+                     modal?:bool = true,
+                     center?:bool = true,
+                     owner:#View = null,
+                     style:DialogStyle = DialogStyle.standard,
+                     large-icon:#Pixmap = null,
+                     small-icon:#Pixmap = null
+                 }:void
+
+    {super.show
+        title = {lmessage パラメータ設定},
+        modal? = modal?,
+        center? = center?,
+        owner = owner,
+        style = style,
+        large-icon = large-icon,
+        small-icon = small-icon}
+  }
+
+}

@@ -1,0 +1,91 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  アニメーションFillPatternListener                                        }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     アニメーション表示するためのFillPatternListener
+                 }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public AnimationFillPatternListener {inherits FillPatternListener}
+  
+  |###|{doc-next {purpose SceneGraphic}}|###|
+  field private graphic :CustomSceneGraphic
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose アニメーションFillPatternListenerのコンストラクタ           }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     初期処理を行う。                                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter graphic, SceneGraphic                                     }
+  }
+  |######################################################################################|
+  {constructor public {default
+                          graphic:CustomSceneGraphic,
+                          ...}
+    set self.graphic = graphic
+    {construct-super
+        {splice ...}}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose FillPattern変更時処理                                       }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     FillPattern再表示時に呼び出される。                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {fill-pattern-changed
+                     fill:NotifyingFillPattern
+                 }:void
+
+    || 再表示イベントを発生させる
+    {log4c.trace "再表示実行"}
+    {self.graphic.update-drawable}
+||--    let exec-proc:{proc-type {}:bool} = {proc {}:bool
+||--                                            {log4c.trace "再表示実行"}
+||--                                            {self.graphic.update-drawable}
+||--                                            {return true}
+||--                                        }
+||--    let ev:CustomSceneGraphicExecProcEvent = {CustomSceneGraphicExecProcEvent exec-proc}
+||--    {self.graphic.add-event ev, times = 1, max-check? = false}
+||--    {log4c.trace "再表示実行：イベント登録"}
+  }
+  
+  
+}

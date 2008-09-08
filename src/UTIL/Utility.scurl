@@ -1,0 +1,931 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  ユーティリティ                                                           }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ユーティリティ。
+                 }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public Utility
+  
+  |###|{doc-next {purpose 許容誤差}}|###|
+  def public PM-UTIL-EPS                     = 0.0001
+  
+  |###|{doc-next {purpose 許容誤差（距離）}}|###|
+  def public PM-UTIL-EPS-MM                  = 0.0001mm
+  
+  |###|{doc-next {purpose 許容誤差（角度）}}|###|
+  def public PM-UTIL-EPS-DEG                 = 0.0001deg
+  
+  |###|{doc-next {purpose ポリゴン処理用許容誤差}}|###|
+  def public PM-UTIL-AREA_EPS                = 0.0001
+  
+  |###|{doc-next {purpose ポリゴン内外判定許容誤差}}|###|
+  def public PM-UTIL-EPS-INPOLY              = 0.0001
+  
+  
+  |###|{doc-next {purpose 最大距離}}|###|
+  def public PM-UTIL-MAX-DIST                =  1000m
+  
+  |###|{doc-next {purpose 最小距離}}|###|
+  def public PM-UTIL-MIN-DIST                = -1000m
+  
+  
+  |###|{doc-next {purpose テキスト色}}|###|
+  def public text-color:String = "#EEEEEE"
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose スケールを考慮してStringからFloatDistanceへ変換する         }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     スケールを考慮してStringからFloatDistanceへ変換します。
+                     文字列が、nullの場合は、0f(mm)を返します。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter st, 文字列                                                }
+    {parameter scale, スケール                                           }
+    {return-vals
+        FloatDistance
+    }
+  }
+  |######################################################################################|
+  {define-proc public {string-to-float-distance
+                          st:#String,
+                          scale:double = 1
+                      }:FloatDistance
+    {if st == null then
+        {return 0f(mm)}
+     else
+        {return (({st.to-double} * scale) * 1f(mm)) asa FloatDistance} 
+    }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 16進数変換（内部）                                          }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     16進数文字列をintに変換します。                     }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter str, 文字列                                               }
+    {return-vals
+        int
+    }
+  }
+  |######################################################################################|
+  {define-proc private {inner-hexa-to-deci
+                           str:String
+                       }:int
+    let result:int
+    let flg:int
+    {for innerstr in str do
+        let num:int = innerstr asa int
+        {if num <= 57 then
+            {if flg == 0 then
+                set result = result + (num - 48) * 16
+             else
+                set result = result + (num - 48)
+            }
+         else
+            {if flg == 0 then
+                set result = result + (num - 87) * 16
+             else
+                set result = result + (num - 87)
+            }
+        }
+        {inc flg}
+    }
+    
+    {return result}    
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 16進数変換（配列）                                          }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     16進数文字列（配列）をint配列に変換します。         }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter str, 文字列                                               }
+    {return-vals
+        {Array-of int}
+    }
+  }
+  |######################################################################################|
+  {define-proc public {hexa-to-deci
+                          str:String
+                      }:{Array-of int}
+    
+    let results:{Array-of int} = {{Array-of int}}
+    {for ii:int = 0 below str.size step 2 do
+        {results.append {Utility.inner-hexa-to-deci {str.substr ii, 2}}}
+    }
+    
+    {return results}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose Distance値をdouble値に変換                                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     Distance値をdouble値に変換します。                  }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter dd, Distance                                              }
+    {return-vals
+        double
+    }
+  }
+  |######################################################################################|
+  {define-proc public {Distance2double
+                          dd:Distance
+                      }:double
+    {return dd / 1.0mm}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose double値をDistance値に変換                                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     double値をDistance値に変換します。                  }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter d, double                                                 }
+    {return-vals
+        Distance
+    }
+  }
+  |######################################################################################|
+  {define-proc public {double2Distance
+                          d:double
+                      }:Distance
+    {return d * 1.0mm}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose Distance3d値をDouble3d値に変換                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     Distance3d値をDouble3d値に変換します。              }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter dd, Distance3d                                            }
+    {return-vals
+        Double3d
+    }
+  }
+  |######################################################################################|
+  {define-proc public {Distance3d2Double3d
+                          dd:Distance3d
+                      }:Double3d
+    {return {Double3d dd.x / 1.0mm, dd.y / 1.0mm, dd.z / 1.0mm}}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose Double3d値をDistance3d値に変換                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     Double3d値をDistance3d値に変換します。              }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter d, Double3d                                               }
+    {return-vals
+        Distance3d
+    }
+  }
+  |######################################################################################|
+  {define-proc public {Double3d2Distance3d
+                          d:Double3d
+                      }:Distance3d
+    {return {Distance3d d.x * 1.0mm, d.y * 1.0mm, d.z * 1.0mm}}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose FloatDistance3d値をDouble3d値に変換                         }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     FloatDistance3d値をDouble3d値に変換します。         }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter dd, FloatDistance3d                                       }
+    {return-vals
+        Double3d
+    }
+  }
+  |######################################################################################|
+  {define-proc public {FloatDistance3d2Double3d
+                          dd:FloatDistance3d
+                      }:Double3d
+    {return {Double3d dd.x / 1.0mm, dd.y / 1.0mm, dd.z / 1.0mm}}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose Double3d値をFloatDistance3d値に変換                         }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     Double3d値をFloatDistance3d値に変換します。         }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter d, Double3d                                               }
+    {return-vals
+        FloatDistance3d
+    }
+  }
+  |######################################################################################|
+  {define-proc public {Double3d2FloatDistance3d
+                          d:Double3d
+                      }:FloatDistance3d
+    {return {FloatDistance3d
+                (d.x * 1.0mm) asa FloatDistance,
+                (d.y * 1.0mm) asa FloatDistance,
+                (d.z * 1.0mm) asa FloatDistance}}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose Double3d値が０か？（誤差考慮）                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     Double3d値が０かをチェックします。（誤差考慮）      }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter d3d, Double3d                                             }
+    {return-vals
+        全項目が０の場合：true、それ以外：false
+    }
+  }
+  |######################################################################################|
+  {define-proc public {is-zero-Double3d?
+                          d3d:Double3d
+                      }:bool
+    {if {abs d3d.x} < Utility.PM-UTIL-EPS and
+        {abs d3d.y} < Utility.PM-UTIL-EPS and
+        {abs d3d.z} < Utility.PM-UTIL-EPS then
+        {return true}
+    }
+    {return false}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ２つのDouble3d値が同じか？（誤差考慮）                      }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ２つのDouble3d値が同じかをチェックします。（誤差考慮）
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter d1, Double3d                                              }
+    {parameter d2, Double3d                                              }
+    {return-vals
+        同じ場合：true、異なる場合：false
+    }
+  }
+  |######################################################################################|
+  {define-proc public {is-same-Double3d?
+                          d1:Double3d,
+                          d2:Double3d
+                      }:bool
+    {if {abs d1.x - d2.x} < Utility.PM-UTIL-EPS and
+        {abs d1.y - d2.y} < Utility.PM-UTIL-EPS and
+        {abs d1.z - d2.z} < Utility.PM-UTIL-EPS then
+        {return true}
+    }
+    {return false}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ２つのDouble3dベクトル値が同じか？（誤差考慮）              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ２つのDouble3dベクトル値が同じかをチェックします。（誤差考慮）
+                     真反対の場合も同じとみなします。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter d1, Double3d                                              }
+    {parameter d2, Double3d                                              }
+    {return-vals
+        同じ場合：true、異なる場合：false
+    }
+  }
+  |######################################################################################|
+  {define-proc public {is-same-Double3d-vector?
+                          d1:Double3d,
+                          d2:Double3d
+                      }:bool
+    {if {abs d1.x - d2.x} < Utility.PM-UTIL-EPS and
+        {abs d1.y - d2.y} < Utility.PM-UTIL-EPS and
+        {abs d1.z - d2.z} < Utility.PM-UTIL-EPS then
+        {return true}
+    }
+    {if {abs d1.x + d2.x} < Utility.PM-UTIL-EPS and
+        {abs d1.y + d2.y} < Utility.PM-UTIL-EPS and
+        {abs d1.z + d2.z} < Utility.PM-UTIL-EPS then
+        {return true}
+    }
+    {return false}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ２つのDouble3d値が同じか？（ポリゴン内外判定誤差考慮）      }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ２つのDouble3d値が同じかをチェックします。
+                     （ポリゴン内外判定誤差考慮）
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter d1, Double3d                                              }
+    {parameter d2, Double3d                                              }
+    {return-vals
+        同じ場合：true、異なる場合：false
+    }
+  }
+  |######################################################################################|
+  {define-proc public {is-same-Double3d-low-precision?
+                          d1:Double3d,
+                          d2:Double3d
+                      }:bool
+    {if {abs d1.x - d2.x} < Utility.PM-UTIL-EPS-INPOLY and
+        {abs d1.y - d2.y} < Utility.PM-UTIL-EPS-INPOLY and
+        {abs d1.z - d2.z} < Utility.PM-UTIL-EPS-INPOLY then
+        {return true}
+    }
+    {return false}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ２つのDistance3d値が同じか？（誤差考慮）                    }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ２つのDistance3d値が同じかをチェックします。（誤差考慮）
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter d1, Distance3d                                            }
+    {parameter d2, Distance3d                                            }
+    {return-vals
+        同じ場合：true、異なる場合：false
+    }
+  }
+  |######################################################################################|
+  {define-proc public {is-same-Distance3d?
+                          d1:Distance3d,
+                          d2:Distance3d
+                      }:bool
+    let wd1:Double3d = {Utility.Distance3d2Double3d d1}
+    let wd2:Double3d = {Utility.Distance3d2Double3d d2}
+    {return {Utility.is-same-Double3d? wd1, wd2}}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ２つのFloatDistance3d値が同じか？（誤差考慮）               }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ２つのFloatDistance3d値が同じかをチェックします。（誤差考慮）
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter d1, FloatDistance3d                                       }
+    {parameter d2, FloatDistance3d                                       }
+    {return-vals
+        同じ場合：true、異なる場合：false
+    }
+  }
+  |######################################################################################|
+  {define-proc public {is-same-FloatDistance3d?
+                          d1:FloatDistance3d,
+                          d2:FloatDistance3d
+                      }:bool
+    let wd1:Double3d = {Utility.FloatDistance3d2Double3d d1}
+    let wd2:Double3d = {Utility.FloatDistance3d2Double3d d2}
+    {return {Utility.is-same-Double3d? wd1, wd2}}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ２つの実数値が同じか？（誤差考慮）                          }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ２つの実数値が同じかをチェックします。（誤差考慮）
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter d1, double                                                }
+    {parameter d2, double                                                }
+    {return-vals
+        同じ場合：true、異なる場合：false
+    }
+  }
+  |######################################################################################|
+  {define-proc public {is-same-double?
+                          d1:double,
+                          d2:double
+                      }:bool
+    {return ({abs d1 - d2} < Utility.PM-UTIL-EPS)}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ２つのDistanceが同じか？（誤差考慮）                        }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ２つのDistanceが同じかをチェックします。（誤差考慮）
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter dist-1, Distance                                          }
+    {parameter dist-2, Distance                                          }
+    {return-vals
+        同じ場合：true、異なる場合：false
+    }
+  }
+  |######################################################################################|
+  {define-proc public {is-same-Distance?
+                          dist-1:Distance,
+                          dist-2:Distance
+                      }:bool
+    {return ({Utility.round-Distance dist-1} == {Utility.round-Distance dist-2})}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ２つのFloatDistanceが同じか？（誤差考慮）                   }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ２つのFloatDistanceが同じかをチェックします。（誤差考慮）
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter dist-1, FloatDistance                                     }
+    {parameter dist-2, FloatDistance                                     }
+    {return-vals
+        同じ場合：true、異なる場合：false
+    }
+  }
+  |######################################################################################|
+  {define-proc public {is-same-FloatDistance?
+                          dist-1:FloatDistance,
+                          dist-2:FloatDistance
+                      }:bool
+    {return ({Utility.round-Distance (dist-1 asa Distance)} == {Utility.round-Distance (dist-2 asa Distance)})}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose Distanceの誤差を取り除く                                    }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     Distanceの誤差を取り除きします。                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter dist, Distance                                            }
+    {return-vals
+        Distance
+    }
+    {notes
+        0.01mm以下の誤差を除きます。
+    }
+  }
+  |######################################################################################|
+  {define-proc public {round-Distance
+                          dist:Distance
+                      }:Distance
+    let dist-dbl:double = {floor ((dist / 1mm) * 100.0 + 0.5)} / 100.0
+    {return dist-dbl * 1mm}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose Angle値をdouble値に変換                                     }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     Angle値をdouble値に変換します。                     }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter dd, Angle                                                 }
+    {return-vals
+        double
+    }
+  }
+  |######################################################################################|
+  {define-proc public {Angle2double
+                          dd:Angle
+                      }:double
+    {return dd / 1deg}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose double値をAngle値に変換                                     }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     double値をAngle値に変換します。                     }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter d, double                                                 }
+    {return-vals
+        Angle
+    }
+  }
+  |######################################################################################|
+  {define-proc public {double2Angle
+                          d:double
+                      }:Angle
+    {return d * 1deg}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 角度を正規化（0°≦角度＜360°）                            }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     角度を正規化（0°≦角度＜360°）します。            }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter ang, 角度                                                 }
+    {return-vals
+        正規化後の角度
+    }
+  }
+  |######################################################################################|
+  {define-proc public {RegularAngle
+                          ang:Angle
+                      }:Angle
+    
+    {while (ang < 0deg) do
+        {inc ang, 360deg}
+    }
+    {while (ang >= 360deg) do
+        {dec ang, 360deg}
+    }
+    
+    {return ang}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 指定角を始角、終角で比較できる値に変更                      }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     指定角を始角、終角で比較できる値に変更します。      }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter st-angle, 始角                                            }
+    {parameter ed-angle, 終角                                            }
+    {parameter ck-angle, 指定角                                          }
+    {return-vals
+        始角,
+        終角,
+        変更後の角
+    }
+  }
+  |######################################################################################|
+  {define-proc public {calc-between-2angle
+                          st-angle:Angle,
+                          ed-angle:Angle,
+                          ck-angle:Angle
+                      }:(Angle, Angle, Angle)
+    
+    let ret-st-ang:Angle = {Utility.RegularAngle st-angle}
+    let ret-ed-ang:Angle = {Utility.RegularAngle ed-angle}
+    let ret-ck-ang:Angle = {Utility.RegularAngle ck-angle}
+    
+    {if (ret-ed-ang == 0rad or
+         ret-ed-ang <= ret-st-ang) then
+        {inc ret-ed-ang, 360deg}
+        {if (ret-ck-ang < ret-st-ang) then
+            {inc ret-ck-ang, 360deg}
+        }
+    }
+    
+    {return (ret-st-ang, ret-ed-ang, ret-ck-ang)}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose Double3d配列をgCAD3Dで表示できる形式でデバッグ表示          }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     Double3d配列をgCAD3Dで表示できる形式でデバッグ表示します。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter coords, {Array-of Double3d}                               }
+  }
+  |######################################################################################|
+  {define-proc public {disp-array-double3d-for-gCAD3D
+                          coords:{Array-of Double3d}
+                      }:void
+
+    {log4c.info "====< Double3d >======================"}
+    {for coord key ii in coords do
+        {log4c.trace "P" & ii + 10 & "= " &
+            " X(" & {format "%12.6f", coord.x} & ")" &
+            " Y(" & {format "%12.6f", coord.y} & ")" &
+            " Z(" & {format "%12.6f", coord.z} & ")"}
+    }
+    {for ii = 0 below coords.size do
+        {log4c.trace "L" & ii + 10 & "=P"& ii + 10 & " P" & ((ii + 1) mod coords.size) + 10}
+    }
+    {log4c.info "======================================"}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose URL文字列の存在確認                                         }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     URL文字列が存在するかをチェックします。
+                     ローカル、サーバの両方に対応しています。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter check-url-str, URL文字列                                  }
+    {return-vals
+        存在する場合：true、存在しない、もしくは、nullの場合：false
+    }
+  }
+  |######################################################################################|
+  {define-proc public {url-is-exist?
+                          check-url-str:String
+                      }:bool
+    
+    {if check-url-str.empty? then
+        {return false}
+    }
+
+    let check-url:Url = {url check-url-str}
+    {try
+        {with-compiler-directives allow-implicit-any-casts? = true do
+            || ローカルファイルで存在しない場合は、以下の処理で例外となる
+            let uriobj:any = {check-url.resolve}
+            || サーバー上のファイルで存在しない場合は、以下の処理で例外となる
+            {type-switch uriobj
+             case hf:HttpFile do
+                let wk-stream:HttpTextInputStream = {hf.http-read-open}
+                {wk-stream.close}
+                {return true}
+             case lf:LocalFile do
+                let wk-stream:TextInputStream = {lf.read-open}
+                {wk-stream.close}
+                {return true}
+            }
+            {return false}
+        }
+     catch e:Exception do
+        {return false}
+    }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose XML文字列のエスケース                                       }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     XML文字列をエスケープします。
+                     以下の変換を行います。
+                     　'<'  -> "&lt;"
+                     　'&'  -> "&amp;"
+                     　'\"' -> "&quot;"
+                     　'\'' -> "&apos;"
+                     　'>'  -> "&gt;"
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter str, XML文字列                                            }
+    {return-vals
+        エスケープされた文字列
+    }
+  }
+  |######################################################################################|
+  {define-proc public {escape-xml-string
+                          str:String
+                      }:String
+    let sb:StringBuf = {new StringBuf}
+    {for c:char in str do
+        {switch c
+         case '<' do
+            {sb.concat "&lt;"}
+         case '&' do
+            {sb.concat "&amp;"}
+         case '\"' do
+            {sb.concat "&quot;"}
+         case '\'' do
+            {sb.concat "&apos;"}
+         case '>' do
+            {sb.concat "&gt;"}
+         else
+            {sb.append c}
+        }
+    }
+    {return {sb.to-String}}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose XML文字列のアンエスケース                                   }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     XML文字列をアンエスケープします。
+                     以下の変換を行います。
+                     　"&lt;"   -> '<'
+                     　"&amp;"  -> '&'
+                     　"&quot;" -> '\"'
+                     　"&apos;" -> '\''
+                     　"&gt;"   -> '>'
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter str, XML文字列                                            }
+    {return-vals
+        アンエスケープされた文字列
+    }
+  }
+  |######################################################################################|
+  {define-proc public {unescape-xml-string
+                          str:String
+                      }:String
+    let wk-str:String = {str.replace-clone    "&lt;",   "<"}
+    set wk-str        = {wk-str.replace-clone "&amp;",  "&"}
+    set wk-str        = {wk-str.replace-clone "&quot;", "\""}
+    set wk-str        = {wk-str.replace-clone "&apos;", "'"}
+    set wk-str        = {wk-str.replace-clone "&gt;",   ">"}
+    {return wk-str}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 文字列が実数値か？                                          }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     文字列が実数値かを判定します。                      }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter str, 検査文字列                                           }
+    {return-vals
+        実数値の場合：true、実数値でない、もしくは、nullの場合：false
+    }
+  }
+  |######################################################################################|
+  {define-proc public {string-double?
+                          str:#String
+                      }:bool
+    {if-non-null str = str then
+        let middle1:#String     || 符号
+        let middle2:#String     || 整数部
+        let middle3:#String     || 小数部
+        {if {regexp-match? "^(\\+\|-)?([0-9]*)\\.?([0-9]*)?$", str, middle1, middle2, middle3} then
+            {return true}
+        }
+    }
+    {return false}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 実数値を丸める                                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     文字列が実数値かを判定します。                      }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter val, 実数値                                               }
+    {parameter figure, 有効小数桁数                                      }
+    {return-vals
+        丸められた実数値
+    }
+  }
+  |######################################################################################|
+  {define-proc public {round-double
+                          val:double,
+                          figure:int
+                      }:double
+    let result-val:double = {round val, {pow 10, -figure}} / {pow 10, figure}
+    {return result-val}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ポップアップメッセージ表示                                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ポップアップメッセージを表示します。                }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter message, メッセージ内容                                   }
+    {parameter title, タイトル文字列                                     }
+    {parameter modal?, モーダル表示か？                                  }
+    {parameter cancel?, キャンセルボタンを表示するか？                   }
+    {return-vals
+        ダイアログ結果
+    }
+  }
+  |######################################################################################|
+  {define-proc public {popup-msg
+                          message:Graphic,
+                          title:String = "",
+                          modal?:bool = true,
+                          cancel?:bool = false,
+                          ...
+                      }:String
+    
+    let frame:Frame = {Frame
+                          color = Utility.text-color,
+                          background = {manifest-url "image", "ControlPanel"}
+                      }
+    
+    let dlg:Dialog = {Dialog}
+    {dlg.add frame}
+
+    let hb:HBox = {HBox
+                      spacing = 5pt,
+                      {CommandButton
+                          width = 20mm,
+                          label = {lmessage OK},
+                          control-color = {manifest-url "image", "Button"},
+                          color = Utility.text-color,
+                          {on Action do
+                              || 'OK'ボタン押下時の処理
+                              {dlg.close Dialog.ok}
+                          }
+                      }}
+    {if cancel? then
+        {hb.add {CommandButton
+                    width = 20mm,
+                    label ={lmessage キャンセル},
+                    control-color = {manifest-url "image", "Button"},
+                    color = Utility.text-color,
+                    {on Action do
+                        || 'キャンセル'ボタン押下時の処理
+                        {dlg.close Dialog.cancel}
+                    }
+                }}
+    }
+    
+    {frame.add
+        {VBox
+            margin = 5pt,
+            message,
+            {Fill height = 2mm},
+            {hcenter
+                hb
+            }
+        }
+    }
+    
+    {dlg.show 
+        title = title,
+        modal? = modal?,
+        center? = true}
+
+    {return {String dlg.return-state}}
+  }
+  
+  
+}

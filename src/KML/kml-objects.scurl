@@ -1,0 +1,166 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+||
+|| ------ KmlObject ------
+||
+{define-class abstract public KmlObject
+  
+  || - - attributes - -
+  field public id:#String
+  field public target-id:#String
+  
+}
+
+
+
+||
+|| ------ Style ------
+||
+{define-class public Style
+
+  || - - attributes - - 
+  field public id:#String
+
+  {constructor public {default id:#String}
+    set self.id = id
+  }
+
+  || - - elements - - 
+  field public line-style:#LineStyle
+  field public poly-style:#PolyStyle
+}
+
+{define-class public ColorStyle
+  
+  || - - elements - -
+  field public color:#String                            || AABBGGRRÇÃ16êiï∂éöóÒ
+  field public color-mode:ColorMode = ColorMode.normal
+}
+
+{define-class public LineStyle
+  {inherits ColorStyle}
+
+  || - - elements - - 
+  field public width:float
+}
+
+{define-class public PolyStyle
+  {inherits ColorStyle}
+
+  || - - elements - - 
+  field public fill:bool
+  field public outline:bool
+}
+
+
+
+||
+|| ------ enum -------
+||
+{define-enum public ColorMode
+    normal,
+    random
+}
+
+
+
+||
+|| ------ DocumentOrigin -------
+||
+{define-class public DocumentOrigin
+
+  || - - elements - - 
+  field public coordinate:{Tuple3-of double, double, double} = {{Tuple3-of double, double, double} 0.0, 0.0, 0.0}
+}
+
+
+
+||
+|| ------ Feature -------
+||
+{define-class abstract public Feature
+  {inherits KmlObject}
+
+  || - - elements - - 
+  field public name:#String
+  field public visibility:bool
+  field public open:bool
+  field public address:#String
+  field public phone-number:#String
+  field public description:#String
+  field public style-url:#String
+}
+
+{define-class public open Placemark
+  {inherits Feature}
+  
+  || - - elements - -
+  || for MultiGeometry, GeometryCollection
+  field public geometry:#{Array-of Geometry}
+}
+
+{define-class abstract public Geometry
+  {inherits KmlObject}
+
+  || - - elements - - 
+  field public extrude:int
+  field public tessellate:bool
+  field public altitude-mode:#AltitudeMode
+}
+
+{define-class public open Polygon
+  {inherits Geometry}
+
+  || - - elements - -
+  field public outer-boundary-is:#BoundaryIs
+  field public inner-boundary-is:#{Array-of BoundaryIs}
+}
+
+{define-class public open BoundaryIs
+  
+  || - - elements - -
+  field public linear-ring:#LinearRing
+}
+
+{define-class public open LineString
+  {inherits Geometry}
+
+  || - - elements - -
+  field public coordinates:#{Array-of {Tuple3-of double, double, double}}
+}
+
+{define-class public open LinearRing
+  {inherits Geometry}
+
+  || - - elements - -
+  field public coordinates:#{Array-of {Tuple3-of double, double, double}}
+}
+
+
+
+||
+|| ------ enum -------
+||
+{define-enum public AltitudeMode
+    clamp-to-grand, || default
+    relative-to-grand,
+    absolute
+}

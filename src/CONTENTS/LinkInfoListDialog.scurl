@@ -1,0 +1,406 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  イメージ表示の為のカスタムセル                                           }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     イメージ表示カスタムセル              }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public open ImageCell {inherits StandardRecordGridCell}
+  
+  |###|{doc-next {purpose イメージ表示Frame}}|###|
+  field private image:Frame = {Frame
+                                width = {make-elastic},
+                                height = {make-elastic}}
+  
+  {constructor public {default}
+    {construct-super}
+    set self.height = 64px
+    {self.add-internal self.image}
+    set self.cells-take-focus? = self.can-update?
+  }
+  
+  {method public open {refresh-data}:void
+    let (data:String, valid?:bool) = {self.get-formatted-data}
+    {if valid? and data != ""  then
+        set self.image.background = {url data}
+     else
+        {unset self.image.background}
+    }
+  }
+}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  複数行表示の為のカスタムセル                                             }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     複数行表示カスタムセル                }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public open MultiLineCell {inherits StandardRecordGridCell}
+  
+  |###|{doc-next {purpose TextArea}}|###|
+  field private multi-line:TextArea = {TextArea
+                                        editable? = false,
+                                        width = {make-elastic},
+                                        height = {make-elastic}}
+  
+  {constructor public {default}
+    {construct-super}
+    set self.height = 64px
+    {self.add-internal self.multi-line}
+    set self.cells-take-focus? = self.can-update?
+    set self.active-traversal-container = null
+  }
+  
+  {method public open {refresh-data}:void
+    let (data:String, valid?:bool) = {self.get-formatted-data}
+    {if valid? and data != ""  then
+        set self.multi-line.value = data
+     else
+        set self.multi-line.value = ""
+    }
+  }
+}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  リンク情報リスト表示ダイアログ                                           }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     リンク情報をリスト形式で表示します。
+                     リンク情報の編集、削除が行えます。
+                 }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public LinkInfoListDialog {inherits Dialog}
+  
+  |###|{doc-next {purpose SceneGraphic}}|###|
+  field private graphic         :CustomSceneGraphic
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose リンク情報リスト表示ダイアログのコンストラクタ              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     画面レイアウトを作成する。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter graphic, SceneGraphic                                     }
+  }
+  |######################################################################################|
+  {constructor public {default
+                          graphic:CustomSceneGraphic,
+                          ...}
+    
+    set self.graphic = graphic
+    
+    {construct-super
+        {splice ...}}
+    
+    let obj-man:ObjectManager = {ObjectManager.get-singleton}
+    
+    let frame:Frame = {Frame
+                          color = Contents.text-color,
+                          background = {manifest-url "image", "ControlPanel"}
+                      }
+    {self.add frame}
+
+    || タイトル部の表示形式変更
+    let gradient-header:RecordGridRowOptions = {RecordGridRowOptions
+                                                   background = 
+                                                       {LinearGradientFillPattern
+                                                           {Fraction2d 0, 1}, 
+                                                           {Fraction2d 0, 0}, 
+                                                           {Spectrum.from-endpoints
+                                                               {manifest-url "image", "ControlPanel"},
+                                                               {FillPattern.get-white}
+                                                           }
+                                                       },
+                                                   valign = "origin",
+                                                   halign = "left",
+                                                   control-actuator-color = {manifest-url "image", "ControlPanel"},
+                                                   font-size = 9pt,
+                                                   font-family = "serif"
+                                               }
+    
+    let records:RecordSet = {RecordSet
+                                {RecordFields
+                                    {RecordField "ID",          caption = {lmessage ＩＤ},       domain = int},
+                                    {RecordField "Title",       caption = {lmessage タイトル},   domain = String},
+                                    {RecordField "Face",        caption = {lmessage 配置面},     domain = int},
+                                    {RecordField "X",           caption = {lmessage Ｘ座標},     domain = double},
+                                    {RecordField "Y",           caption = {lmessage Ｙ座標},     domain = double},
+                                    {RecordField "Width",       caption = {lmessage 幅},         domain = double},
+                                    {RecordField "Height",      caption = {lmessage 高さ},       domain = double},
+                                    {RecordField "Offset",      caption = {lmessage オフセット}, domain = double},
+                                    {RecordField "Image",       caption = {lmessage イメージ},   domain = String},
+                                    {RecordField "Jump",        caption = {lmessage ＵＲＬ},     domain = String},
+                                    {RecordField "Info",        caption = {lmessage コメント},   domain = String}
+                                }}
+
+    let infos:{Array-of LinkImageInfo} = {obj-man.get-all-infos}
+    {for info:LinkImageInfo key ii in infos do
+        {records.append {RecordData
+                            ID          = info.id,
+                            Title       = info.title,
+                            Face        = info.face,
+                            X           = info.xx,
+                            Y           = info.yy,
+                            Width       = info.ww,
+                            Height      = info.hh,
+                            Offset      = info.offset,
+                            Image       = info.image,
+                            Jump        = info.jump,
+                            Info        = info.info}}
+    }
+
+    let infos-rg:RecordGrid = {RecordGrid
+                                  width = 230mm,
+                                  height = 114mm,
+                                  editable? = false,
+                                  automatic-columns? = false,
+                                  column-movable?= false,
+                                  column-resizable? = true,
+                                  cells-take-focus? = false,
+                                  record-source = records,
+                                  header-options = gradient-header,
+                                  display-navigation-panel? = false,
+                                  multiple-selection-enabled? = false,
+                                  key-spec = "ID",
+                                  sort = "ID",
+                                  background = {manifest-url "image", "ControlPanel"},
+                                  control-color = Contents.text-background,
+                                  control-content-background = {Background.from-Color {Color.from-string Contents.text-background}},
+                                  
+                                  {RecordGridColumn  width =   8mm, "ID",
+                                      halign = "center", valign = "center"},
+                                  {RecordGridColumn  width =  30mm, "Title",
+                                      halign = "left",   valign = "center"},
+                                  {RecordGridColumn  width =  12mm, "Face",
+                                      halign = "right",  valign = "center"},
+                                  {RecordGridColumn  width =  12mm, "X",
+                                      halign = "right",  valign = "center"},
+                                  {RecordGridColumn  width =  12mm, "Y",
+                                      halign = "right",  valign = "center"},
+                                  {RecordGridColumn  width =  12mm, "Width",
+                                      halign = "right",  valign = "center"},
+                                  {RecordGridColumn  width =  12mm, "Height",
+                                      halign = "right",  valign = "center"},
+                                  {RecordGridColumn  width =  12mm, "Offset",
+                                      halign = "right",  valign = "center"},
+                                  {RecordGridColumn  width =  64px, "Image",
+                                      column-resizable? = false, cell-spec = ImageCell,
+                                      halign = "left",   valign = "center"},
+                                  {RecordGridColumn  width = 100mm, "Jump",
+                                      halign = "left",   valign = "center"},
+                                  {RecordGridColumn  width = 100mm, "Info",
+                                      cell-spec = MultiLineCell,
+                                      halign = "left",   valign = "center"}
+                              }
+    
+    || 列の固定表示設定
+    {infos-rg.set-frozen-region 0, 2}
+    
+    {frame.add
+        {VBox
+            margin = 5pt,
+            infos-rg,
+            {hcenter
+                {HBox
+                    spacing = 5pt,
+                    {CommandButton
+                        width = 20mm,
+                        label = {lmessage 編集},
+                        control-color = {manifest-url "image", "Button"},
+                        color = Contents.text-color,
+                        {on Action do
+                            || '編集'ボタン押下時の処理
+                            {if infos-rg.selection.record-count != 1 then
+                                {Utility.popup-msg {lmessage 編集対象レコードを選択してください。}}
+                             else
+                                {for ii:int in infos-rg.selection.records do
+                                    let rec:Record = infos-rg.records[ii]
+                                    let info-id:int = rec["ID"] asa int
+                                    let info:#LinkImageInfo = {obj-man.get-info info-id}
+                                    {if-non-null info = info then
+                                        {self.close "EDIT"}
+
+                                        || リンク情報編集ダイアログを子ダイアログとして表示するため、
+                                        || 実行後の処理は、イベント処理で行う。
+                                        || （リンク情報編集ダイアログ内で、配置面、位置指示の際に一旦Closeすることへの対処）
+                                        let dlg:LinkInfoEditDialog = {LinkInfoEditDialog graphic, info = info}
+                                        let detach-eh:EventHandler =
+                                            {on e:DetachEvent at dlg:Dialog do
+                                                let result:#String = dlg.return-state
+                                                {switch result
+                                                 case Dialog.ok do
+                                                    || OKボタン押下の場合内容を反映し、再表示する
+                                                    let new-info:#LinkImageInfo = {obj-man.get-info info-id}
+                                                    {if-non-null new-info = new-info then
+                                                        set rec["ID"]           = new-info.id
+                                                        set rec["Title"]        = new-info.title
+                                                        set rec["Face"]         = new-info.face
+                                                        set rec["X"]            = new-info.xx
+                                                        set rec["Y"]            = new-info.yy
+                                                        set rec["Width"]        = new-info.ww
+                                                        set rec["Height"]       = new-info.hh
+                                                        set rec["Offset"]       = new-info.offset
+                                                        set rec["Image"]        = new-info.image
+                                                        set rec["Jump"]         = new-info.jump
+                                                        set rec["Info"]         = new-info.info
+                                                        {graphic.update-drawable}
+                                                        {infos-rg.records.commit}
+                                                    }
+                                                    {after 0s do
+                                                        {self.show}
+                                                    }
+                                                 case Dialog.cancel, null do
+                                                    || Cancelボタン押下、×ボタン押下の場合、再表示する
+                                                    {after 0s do
+                                                        {self.show}
+                                                    }
+                                                }
+                                            }
+                                        {dlg.add-event-handler detach-eh}
+                                        {dlg.show}
+                                    }
+                                    {break}
+                                }
+                            }
+                        }
+                    },
+                    {CommandButton
+                        width = 20mm,
+                        label = {lmessage 削除},
+                        control-color = {manifest-url "image", "Button"},
+                        color = Contents.text-color,
+                        {on Action do
+                            || '削除'ボタン押下時の処理
+                            {if infos-rg.selection.record-count == 0 then
+                                {Utility.popup-msg {lmessage 削除対象レコードを選択してください。}}
+                             else
+                                let result:String = {Utility.popup-msg
+                                                        cancel? = true,
+                                                        title = {lmessage 削除確認},
+                                                        {lmessage 選択されているレコードの情報を削除します。よろしいですか？}}
+                                {if {result.equal? Dialog.ok} then
+                                    {for ii:int in infos-rg.selection.records do
+                                        let rec:Record = infos-rg.records[ii]
+                                        let info-id:int = rec["ID"] asa int
+                                        let info:#LinkImageInfo = {obj-man.get-info info-id}
+                                        {if-non-null info = info then
+                                            {obj-man.del-info graphic, info-id}
+                                        }
+                                        {rec.delete}
+                                    }
+                                    {graphic.update-drawable}
+                                    {infos-rg.records.commit}
+                                }
+                            }
+                        }
+                    },
+                    {Fill},
+                    {CommandButton
+                        width = 20mm,
+                        label = {lmessage 閉じる},
+                        control-color = {manifest-url "image", "Button"},
+                        color = Contents.text-color,
+                        {on Action do
+                            || '閉じる'ボタン押下時の処理
+                            {self.close Dialog.cancel}
+                        }
+                    }
+                }
+            }
+        }
+    }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose リンク情報リスト表示ダイアログ表示                          }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ダイアログを表示する。                              }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter title, ウィンドウのタイトル                               }
+    {parameter modal?, モーダルか非モーダルか                            }
+    {parameter center?, オーナーの前で中央揃えするかどうか               }
+    {parameter owner, オーナー                                           }
+    {parameter style, ダイアログ・スタイル                               }
+    {parameter large-icon, 大きなアイコン・イメージ                      }
+    {parameter small-icon, 小さなアイコン・イメージ                      }
+  }
+  |######################################################################################|
+  {method public {show
+                     title:String = "",
+                     modal?:bool = true,
+                     center?:bool = true,
+                     owner:#View = null,
+                     style:DialogStyle = DialogStyle.standard,
+                     large-icon:#Pixmap = null,
+                     small-icon:#Pixmap = null
+                 }:void
+
+    {super.show
+        title = {lmessage リンク情報リスト},
+        modal? = modal?,
+        center? = center?,
+        owner = owner,
+        style = style,
+        large-icon = large-icon,
+        small-icon = small-icon}
+  }
+  
+  
+}

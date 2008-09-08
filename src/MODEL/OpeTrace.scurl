@@ -1,0 +1,98 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  操作履歴                                                                 }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     操作履歴。
+                 }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public OpeTrace
+  
+  |###|{doc-next {purpose 待ち時間}}|###|
+  field public interval:Time
+  
+  |###|{doc-next {purpose 移動Ｘ座標}}|###|
+  field public xx:Distance
+  
+  |###|{doc-next {purpose 移動Ｙ座標}}|###|
+  field public yy:Distance
+  
+  |###|{doc-next {purpose 移動Ｚ座標}}|###|
+  field public zz:Distance
+  
+  |###|{doc-next {purpose 方位角}}|###|
+  field public azimuth:Angle
+  
+  |###|{doc-next {purpose 仰角}}|###|
+  field public elevation:Angle
+  
+  |###|{doc-next {purpose 分割数（>0の時、前回位置より分割して補間する}}|###|
+  field public divide-count:int
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 操作履歴のコンストラクタ                                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     初期処理を行う。                                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter interval, 待ち時間                                        }
+    {parameter xx, 移動Ｘ座標                                            }
+    {parameter yy, 移動Ｙ座標                                            }
+    {parameter zz, 移動Ｚ座標                                            }
+    {parameter azimuth, 方位角                                           }
+    {parameter elevation, 仰角                                           }
+  }
+  |######################################################################################|
+  {constructor public {default
+                          interval:double,
+                          xx:double,
+                          yy:double,
+                          zz:double,
+                          azimuth:double,
+                          elevation:double,
+                          divide-count:int
+                      }
+
+    set self.interval           = interval  * 1ms
+    set self.xx                 = xx        * 1mm
+    set self.yy                 = yy        * 1mm
+    set self.zz                 = zz        * 1mm
+    set self.azimuth            = azimuth   * 1deg
+    set self.elevation          = elevation * 1deg
+    set self.divide-count       = divide-count
+  }
+  
+  
+}

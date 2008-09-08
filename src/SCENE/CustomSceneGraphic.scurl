@@ -1,0 +1,2118 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  光線形状の交点のシーン イベント                                          }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     交点取得のためシーン イベント         }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class RayEvent {inherits RayIntersectionSceneEvent}
+  {constructor {default ...}
+    {construct-super
+        {splice ...}}
+  }
+}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  ラインセグメント形状の交点のシーン イベント                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     交点取得のためシーン イベント         }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class LineSegmentEvent {inherits LineSegmentIntersectionSceneEvent}
+  {constructor {default ...}
+    {construct-super
+        {splice ...}}
+  }
+}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  ボックス形状の交点のシーン イベント                                      }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     交点取得のためシーン イベント         }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class BoxEvent {inherits BoxIntersectionSceneEvent}
+  {constructor {default ...}
+    {construct-super
+        {splice ...}}
+  }
+}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  カスタム シーン グラフィック                                             }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     カスタム シーン グラフィック。        }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public CustomSceneGraphic {inherits SceneGraphic}
+  
+  |###|{doc-next {purpose 背景色}}|###|
+  let public back-color:String = "#777777"
+
+  
+  |###|{doc-next {purpose 現在のCameraMotionMode（作業用）}}|###|
+  field private tmp-camera-mode:#CameraMotionMode
+  
+  |###|{doc-next {purpose 目線の高さ(mm)}}|###|
+  field public constant eye-height:Distance = 1500mm
+  
+  |###|{doc-next {purpose チェックする高さ(mm)}}|###|
+  field private constant check-height-pos:Distance = -800mm
+  
+  |###|{doc-next {purpose 下面をチェックする距離(mm)}}|###|
+  field private constant check-down-dist:Distance = 3000mm
+  
+  |###|{doc-next {purpose 前面をチェックする距離(mm)}}|###|
+  field private check-front-dist:Distance = 625mm
+  
+  |###|{doc-next {purpose 飛び降りることができる高さ(mm)}}|###|
+  field private constant jump-able-height:Distance = 1000mm
+  
+  |###|{doc-next {purpose 登ることができる高さ(mm)}}|###|
+  field private constant climb-able-height:Distance = 450mm
+  
+  |###|{doc-next {purpose 仰ぎ見る制限角度(Degree)}}|###|
+  field private constant limit-angle-look-up:double = 80.0
+  
+  |###|{doc-next {purpose うつむく制限角度(Degree)}}|###|
+  field private constant limit-angle-look-down:double = -90.0
+  
+  |###|{doc-next {purpose 広角範囲(Degree)}}|###|
+  field private constant view-wide:Angle = 60deg
+  
+  |###|{doc-next {purpose 最接近距離(mm)}}|###|
+  field private most-approach:Distance = 200mm
+  
+  |###|{doc-next {purpose 壁との猶予距離(mm)}}|###|
+  field private postponement-wall:Distance = 250mm
+  
+  |###|{doc-next {purpose ボックスチェック距離(mm)}}|###|
+  field private box-check-distance:Distance = 625mm
+  
+  |###|{doc-next {purpose 一回での移動距離(mm)}}|###|
+  field private move-step-dist:Distance = 100mm
+  
+  |###|{doc-next {purpose 一回での回転角度(Deg)}}|###|
+  field private rotate-step-angle:Angle = 1.0deg
+  
+  
+  |###|{doc-next {purpose 目の位置}}|###|
+  field private eye-position:Distance3d = {Distance3d.zero}
+  
+  |###|{doc-next {purpose 移動前方ベクトル}}|###|
+  field private eye-front-vec:Direction3d = {Double3d.zero}
+  
+  |###|{doc-next {purpose 上方ベクトル}}|###|
+  field private up-vec:Direction3d = {Direction3d.zero}
+  
+  |###|{doc-next {purpose 視線ベクトル}}|###|
+  field private view-vec:Direction3d = {Direction3d.zero}
+  
+  
+  |###|{doc-next {purpose 近クリップ面}}|###|
+  field private constant near-clipping:Distance = 1mm
+  
+  |###|{doc-next {purpose 遠クリップ面}}|###|
+  field private constant far-clipping:Distance = 1000m
+  
+  |###|{doc-next {purpose １ピクセルのサイズ}}|###|
+  field private constant move-1px:Distance = {any-to-Distance 1px}
+  
+
+||--  |###|{doc-next {purpose 壁に当たった時に壁をフラッシュ表示させるか？}}|###|
+||--  field private is-flash?:bool = false
+||--  
+||--  |###|{doc-next {purpose フラッシュ表示の時間間隔}}|###|
+||--  field private constant flash-interval:Time = 0.05s
+||--  
+||--  |###|{doc-next {purpose フラッシュ表示の回数}}|###|
+||--  field private constant flash-count:int = 6
+  
+
+  |###|{doc-next {purpose イベント実行間隔}}|###|
+  field private event-timer:Timer
+  
+  |###|{doc-next {purpose イベントキュー}}|###|
+  field private event-queue:{Array-of CustomSceneGraphicEvent}
+  
+  |###|{doc-next {purpose イベント識別ID}}|###|
+  field private event-max-id:int
+  
+  |###|{doc-next {purpose イベントキュー最大数}}|###|
+  field private event-max-size:int = 40
+  
+  |###|{doc-next {purpose マウス比率}}|###|
+  field private mouse-step-ratio:double = 2.0
+
+  |###|{doc-next {purpose 惰性モード}}|###|
+  field private momentum-mode:bool = false
+
+  |###|{doc-next {purpose 床面イベント実行可能か？}}|###|
+  field private down-event-wait?:bool = false
+  
+  
+  |###|{doc-next {purpose アニメーション・タイマー}}|###|
+  field public animation-timer:Timer
+  
+  
+  |###|{doc-next {purpose イベント実行時の呼び出し関数}}|###|
+  field private _exec-event-proc:#{proc-type {event:CustomSceneGraphicEvent}:bool}
+  
+  
+||--  || デバッグ用
+||--  field private sphere:Sphere
+||--  field private sphere-front:Sphere
+||--  field private sphere-left:Sphere
+||--  field private sphere-right:Sphere
+||--  field private sphere-back:Sphere
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose カスタム シーン グラフィックのコンストラクタ                }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     初期処理を行う。                                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter scene, シーン                                             }
+  }
+  |######################################################################################|
+  {constructor public {default
+                          scene:Scene,
+                          ...}
+    {construct-super
+        scene,
+        background = CustomSceneGraphic.back-color,
+        width = {make-elastic},
+        height = {make-elastic},
+        camera-motion-mode = CameraMotionMode.orbit,
+        occlusion-performance-mode = 
+            OcclusionPerformanceMode.best-effort,
+||--        occlusion-performance-mode = 
+||--            OcclusionPerformanceMode.high-performance,
+||--        occlusion-performance-mode = 
+||--            OcclusionPerformanceMode.accurate-occlusion,
+||--        draw-operation = DrawOperation.blend,
+        {splice ...}
+    }
+    
+||--    set self.sphere = {Sphere
+||--                          lighting-enabled? = true,
+||--                          hres = 10, vres = 10,
+||--                          size = 80f(mm),
+||--                          fill-pattern = {FillPattern.get-blue}}
+||--    {self.scene.add-object self.sphere}
+||--    {self.sphere.translate  0mm, 0mm, 500mm}
+||--    
+||--    set self.sphere-front = {Sphere
+||--                                lighting-enabled? = true,
+||--                                hres = 10, vres = 10,
+||--                                size = 50f(mm),
+||--                                fill-pattern = {FillPattern.get-yellow}}
+||--    {self.scene.add-object self.sphere-front}
+||--    {self.sphere-front.translate  0mm, 0mm, 500mm}
+||--    
+||--    set self.sphere-left = {Sphere
+||--                               lighting-enabled? = true,
+||--                               hres = 10, vres = 10,
+||--                               size = 50f(mm),
+||--                               fill-pattern = {FillPattern.get-green}}
+||--    {self.scene.add-object self.sphere-left}
+||--    {self.sphere-left.translate  0mm, 0mm, 500mm}
+||--    
+||--    set self.sphere-right = {Sphere
+||--                                lighting-enabled? = true,
+||--                                hres = 10, vres = 10,
+||--                                size = 50f(mm),
+||--                                fill-pattern = {FillPattern.get-aqua}}
+||--    {self.scene.add-object self.sphere-right}
+||--    {self.sphere-right.translate  0mm, 0mm, 500mm}
+||--    
+||--    set self.sphere-back = {Sphere
+||--                               lighting-enabled? = true,
+||--                               hres = 10, vres = 10,
+||--                               size = 50f(mm),
+||--                               fill-pattern = {FillPattern.get-magenta}}
+||--    {self.scene.add-object self.sphere-back}
+||--    {self.sphere-back.translate  0mm, 0mm, 500mm}
+    
+    || イベント タイマー
+    set self.event-timer = {Timer
+                               interval = .001s,
+                               repeat = -1,
+                               {on TimerEvent do
+                                   {if (self.event-queue.size == 0) then
+                                       {self.event-timer.disable}
+                                    else
+                                       let ev:CustomSceneGraphicEvent = self.event-queue[0]
+||--                                       {log4c.trace "イベント実行:  ID: " & ev.id & "  Size: " & self.event-queue.size}
+                                       let result:bool = {self.excute-event ev}
+                                       {if not result then
+                                           let same-id:int = -1
+||--                                           {log4c.trace "イベント中断:  ID: " & ev.id & "  Size: " & self.event-queue.size}
+                                           {for e:CustomSceneGraphicEvent key ii in self.event-queue do
+||--                                               {log4c.trace "  ii: " & ii & "  ID: " & e.id}
+                                               {if e.id == ev.id then
+                                                   set same-id = ii
+                                                else
+                                                   {break}
+                                               }
+                                           }
+                                           {if same-id == -1 then
+                                               {self.event-queue.clear}
+                                               {self.event-timer.disable}
+                                            else
+                                               {self.event-queue.remove 0, length = same-id + 1}
+                                           }
+||--                                           {log4c.trace "  -> Size: " & self.event-queue.size}
+                                        else
+                                           {self.event-queue.remove 0}
+                                           {if self.momentum-mode and self.event-queue.size == 0 then
+                                               {if ev isa CustomSceneGraphicEyeMoveEvent or
+                                                   ev isa CustomSceneGraphicViewMoveEvent then
+                                                   {self.event-queue.append ev}
+                                               }
+                                           }
+                                       }
+||--                                       {log4c.trace "  -> Size: " & self.event-queue.size & "  garbage-collect-count: " & {garbage-collect-count}}
+                                   }
+                               }
+                           }
+    {self.event-timer.disable}
+    
+    set self.event-queue = {new {Array-of CustomSceneGraphicEvent}}
+    
+    set self.event-max-id = 1
+    
+    || アニメーション タイマー
+    set self.animation-timer = {Timer
+                                   enabled? = false,
+                                   repeat = -1,
+                                   interval = 100ms,
+                                   {on TimerEvent do
+                                       {self.update-drawable}
+                                   }
+                               }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose カメラモード初期設定                                        }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     カメラモードを初期設定する。                        }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {camera-init}:void
+    
+    {self.reset-camera}
+    
+    || 照明を追加
+    {self.scene.add-object
+        {DirectionalLight
+            direction = {Direction3d 0, 0, -1},
+            specular-color = {Color.from-rgb .4, .4, .4},
+            eye-space? = true
+        }
+    }
+    {self.scene.add-object
+        {DirectionalLight
+            direction = {Direction3d 0, 0, 1},
+            specular-color = {Color.from-rgb .4, .4, .4},
+            eye-space? = true
+        }
+    }
+    {self.scene.add-object
+        {DirectionalLight
+            direction = {Direction3d -1, -1, -1},
+            specular-color = {Color.from-rgb .4, .4, .4},
+            eye-space? = true
+        }
+    }
+    {self.scene.add-object
+        {DirectionalLight
+            direction = {Direction3d 1, 1, 1},
+            specular-color = {Color.from-rgb .4, .4, .4},
+            eye-space? = true
+        }
+    }
+
+    || シーンの周囲色
+    set self.scene.ambient-light-color = {Color.from-rgb .1, .1, .1}
+
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose カメラ位置リセット                                          }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     カメラ位置をリセットする。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {reset-camera}:void
+    
+    let camera:Camera = self.scene.camera
+    
+    set self.eye-position = {Distance3d 0.0mm, 0.0mm, self.eye-height}
+    set self.eye-front-vec = {Direction3d 0.0, 1.0, 0.0}
+    set self.up-vec = {Direction3d 0.0, 0.0, 1.0}
+    set self.view-vec = {Direction3d 0.0, 1.0, 0.0}
+    
+    set camera.projection = Projection.perspective
+    set camera.near-clipping-plane = self.near-clipping
+    set camera.far-clipping-plane = self.far-clipping
+    
+    set camera.field-of-view = self.view-wide
+
+    {camera.zoom 1.0}
+
+    {self.set-camera}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose カメラ位置セット                                            }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     シーンのカメラに反映する。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {set-camera}:void
+    let old-pos:Distance3d = self.scene.camera.world-position
+    let old-vec:Double3d = self.scene.camera.view-vector
+    let old-up-vec:Double3d = self.scene.camera.up-vector
+
+    {try
+        {self.scene.camera.set-orientation-and-position
+            self.view-vec,
+            self.up-vec,
+            position = self.eye-position}
+     catch e:ArithmeticException do
+        {self.scene.camera.set-orientation-and-position
+            old-vec,
+            old-up-vec,
+            position = old-pos}
+        set self.eye-position = old-pos
+        set self.view-vec = old-vec
+        set self.up-vec = old-up-vec
+    }
+    
+||--    set self.sphere.world-position = {Distance3d
+||--                                         self.eye-position.x,
+||--                                         self.eye-position.y,
+||--                                         self.eye-position.z + self.check-height-pos - self.eye-height}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose カメラ位置変更                                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     カメラ位置を変更する。                              }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter xx, Ｘ座標                                                }
+    {parameter yy, Ｙ座標                                                }
+    {parameter zz, Ｚ座標                                                }
+  }
+  |######################################################################################|
+  {method public {set-eye-position
+                     xx:Distance,
+                     yy:Distance,
+                     zz:Distance}:void
+    set self.eye-position = {Distance3d xx, yy, zz}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose カメラ位置取得                                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     カメラ位置を取得する。                              }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        Ｘ座標,
+        Ｙ座標,
+        Ｚ座標
+    }
+  }
+  |######################################################################################|
+  {method public {get-eye-position}:(Distance, Distance, Distance)
+    {return
+        self.eye-position.x,
+        self.eye-position.y,
+        self.eye-position.z
+    }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 移動方向変更                                                }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     移動方向を変更する。                                }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter xx, Ｘ座標                                                }
+    {parameter yy, Ｙ座標                                                }
+    {parameter zz, Ｚ座標                                                }
+  }
+  |######################################################################################|
+  {method public {set-eye-front-vec
+                     xx:double,
+                     yy:double,
+                     zz:double}:void
+    set self.eye-front-vec = {Direction3d xx, yy, zz}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 移動方向取得                                                }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     移動方向を取得する。                                }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        Ｘ座標,
+        Ｙ座標,
+        Ｚ座標
+    }
+  }
+  |######################################################################################|
+  {method public {get-eye-front-vec}:(double, double, double)
+    {return
+        self.eye-front-vec.x,
+        self.eye-front-vec.y,
+        self.eye-front-vec.z
+    }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose カメラ上方方向変更                                          }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     カメラ上方方向を変更する。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter xx, Ｘ座標                                                }
+    {parameter yy, Ｙ座標                                                }
+    {parameter zz, Ｚ座標                                                }
+  }
+  |######################################################################################|
+  {method public {set-up-vec
+                     xx:double,
+                     yy:double,
+                     zz:double}:void
+    set self.up-vec = {Direction3d xx, yy, zz}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose カメラ上方方向取得                                          }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     カメラ上方方向を取得する。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        Ｘ座標,
+        Ｙ座標,
+        Ｚ座標
+    }
+  }
+  |######################################################################################|
+  {method public {get-up-vec}:(double, double, double)
+    {return
+        self.up-vec.x,
+        self.up-vec.y,
+        self.up-vec.z
+    }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose カメラ方向変更                                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     カメラ方向を変更する。                              }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter xx, Ｘ座標                                                }
+    {parameter yy, Ｙ座標                                                }
+    {parameter zz, Ｚ座標                                                }
+  }
+  |######################################################################################|
+  {method public {set-view-vec
+                     xx:double,
+                     yy:double,
+                     zz:double}:void
+    set self.view-vec = {Direction3d xx, yy, zz}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose カメラ方向取得                                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     カメラ方向を取得する。                              }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        Ｘ座標,
+        Ｙ座標,
+        Ｚ座標
+    }
+  }
+  |######################################################################################|
+  {method public {get-view-vec}:(double, double, double)
+    {return
+        self.view-vec.x,
+        self.view-vec.y,
+        self.view-vec.z
+    }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose クリッピング変更                                            }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     クリッピングを変更する。                            }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter near, 近クリップ面                                        }
+    {parameter far, 遠クリップ面                                         }
+  }
+  |######################################################################################|
+  {method public {set-clipping
+                     near:Distance,
+                     far:Distance}:void
+    let camera:Camera = self.scene.camera
+    set camera.near-clipping-plane = near
+    set camera.far-clipping-plane  = far
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose クリッピング取得                                            }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     クリッピングを取得する。                            }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        近クリップ面,
+        遠クリップ面
+    }
+  }
+  |######################################################################################|
+  {method public {get-clipping}:(Distance, Distance)
+    let camera:Camera = self.scene.camera
+    {return
+        camera.near-clipping-plane,
+        camera.far-clipping-plane
+    }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose カメラ視野変更                                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     カメラ視野を変更する。                              }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter ang, 視野                                                 }
+  }
+  |######################################################################################|
+  {method public {set-field-of-view
+                     ang:Angle}:void
+    set self.scene.camera.field-of-view = ang
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose カメラ視野取得                                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     カメラ視野を取得する。                              }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        視野
+    }
+  }
+  |######################################################################################|
+  {method public {get-field-of-view}:(Angle)
+    {return self.scene.camera.field-of-view}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  視線情報変更                                               }
+    {details {itemize
+                 {item {code 解説}  ： 
+                      視線情報を変更する。                               }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter azimuth, 方位角                                           }
+    {parameter elevation, 仰角                                           }
+  }
+  |######################################################################################|
+  {method public {set-angle-view
+                     azimuth:Angle,
+                     elevation:Angle}:void
+    
+    || 左右方向の回転
+    let rot-mat-lr:Matrix3d = {Matrix3d.create-rotation {Direction3d 0.0, 0.0, 1.0}, azimuth}
+    
+    || 上下方向の回転
+    let (xx:double, yy:double, zz:double, ww:double) = {rot-mat-lr.multiply 0.0, 1.0, 0.0, 1.0}
+    let vv:Direction3d = {Direction3d xx, yy, zz}
+    let rot-mat-ud:Matrix3d = {Matrix3d.create-rotation {Geom.calc-outer-product vv, {Direction3d 0.0, 0.0, 1.0}}, elevation}
+    
+    set (xx, yy, zz, ww) = {rot-mat-lr.multiply 0.0, 1.0, 0.0, 1.0}
+    set (xx, yy, zz, ww) = {rot-mat-ud.multiply xx, yy, zz, 1.0}
+    set self.view-vec = {Geom.calc-unit-product {Direction3d xx, yy, zz}}
+    set self.eye-front-vec = {Geom.calc-unit-product {Direction3d xx, yy, 0.0}}
+
+    set (xx, yy, zz, ww) = {rot-mat-lr.multiply 0.0, 0.0, 1.0, 1.0}
+    set (xx, yy, zz, ww) = {rot-mat-ud.multiply xx, yy, zz, 1.0}
+    set self.up-vec = {Geom.calc-unit-product {Direction3d xx, yy, zz}}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  視線情報取得                                               }
+    {details {itemize
+                 {item {code 解説}  ： 
+                      視線情報を取得する。                               }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        方位角,
+        仰角
+    }
+  }
+  |######################################################################################|
+  {method public {get-angle-view}:(Angle, Angle)
+    let (ang-azimuth:Angle, azimuth-ok?:bool) = {Geom.calc-angle-2d self.view-vec.x, self.view-vec.y}
+    {if not azimuth-ok? then
+        set (ang-azimuth, azimuth-ok?) = {Geom.calc-angle-2d self.up-vec.x, self.up-vec.y}
+    }
+    let azimuth:double = ang-azimuth / 1deg - 90.0
+    {if azimuth < 0.0 then {inc azimuth, 360.0}}
+    let len:double = {sqrt self.view-vec.x * self.view-vec.x + self.view-vec.y * self.view-vec.y}
+    let (ang-elevation:Angle, elevation-ok?:bool) = {Geom.calc-angle-2d len, self.view-vec.z}
+    let elevation:double = ang-elevation / 1deg
+    {if elevation > 180.0 then set elevation = elevation - 360.0}
+    {return (azimuth * 1deg, elevation * 1deg)}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  移動距離変更                                               }
+    {details {itemize
+                 {item {code 解説}  ： 
+                      一回での移動距離(mm)を変更する。                   }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter move-step-dist, 移動距離                                  }
+  }
+  |######################################################################################|
+  {method public {set-move-step-dist
+                     move-step-dist:Distance}:void
+    set self.move-step-dist = move-step-dist
+
+    || 移動距離に合わせて、「壁との猶予距離」などを見直す
+    set self.most-approach = move-step-dist * 2
+    set self.postponement-wall = move-step-dist * 2.5
+    set self.box-check-distance = self.postponement-wall * 2.5
+    set self.check-front-dist = self.postponement-wall * 2.5
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  移動距離取得                                               }
+    {details {itemize
+                 {item {code 解説}  ： 
+                      一回での移動距離(mm)を取得する。                   }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        移動距離
+    }
+  }
+  |######################################################################################|
+  {method public {get-move-step-dist}:Distance
+    {return self.move-step-dist}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  回転角度変更                                               }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     一回での回転角度(Deg)を変更する。                  }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter rotate-step-angle, 回転角度                               }
+  }
+  |######################################################################################|
+  {method public {set-rotate-step-angle
+                     rotate-step-angle:Angle}:void
+    set self.rotate-step-angle = rotate-step-angle
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  回転角度取得                                               }
+    {details {itemize
+                 {item {code 解説}  ： 
+                      一回での回転角度(Deg)を取得する。                  }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        回転角度
+    }
+  }
+  |######################################################################################|
+  {method public {get-rotate-step-angle}:Angle
+    {return self.rotate-step-angle}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  イベント最大保持数変更                                     }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     イベント最大保持数を変更する。                      }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter event-max-size, イベント最大保持数                        }
+  }
+  |######################################################################################|
+  {method public {set-event-max-size
+                     event-max-size:int}:void
+    set self.event-max-size = event-max-size
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  イベント最大保持数取得                                     }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     イベント最大保持数を取得する。                      }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        イベント最大保持数
+    }
+  }
+  |######################################################################################|
+  {method public {get-event-max-size}:int
+    {return self.event-max-size}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  マウス移動比率変更                                         }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     マウス移動比率を変更する。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter mouse-step-ratio, マウス移動比率                          }
+  }
+  |######################################################################################|
+  {method public {set-mouse-step-ratio
+                     mouse-step-ratio:double}:void
+    set self.mouse-step-ratio = mouse-step-ratio
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  マウス移動比率取得                                         }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     マウス移動比率を取得する。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        マウス移動比率
+    }
+  }
+  |######################################################################################|
+  {method public {get-mouse-step-ratio}:double
+    {return self.mouse-step-ratio}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  アニメーション変更                                         }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     アニメーションを変更する。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter enabled?, 有効か？                                        }
+    {parameter interval, 更新間隔                                        }
+  }
+  |######################################################################################|
+  {method public {set-animation
+                     enabled?:bool,
+                     interval:Time}:void
+    set self.animation-timer.enabled? = enabled?
+    set self.animation-timer.interval = interval
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  アニメーション取得                                         }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     アニメーションを取得する。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        有効か？,
+        更新間隔
+    }
+  }
+  |######################################################################################|
+  {method public {get-animation}:(bool, Time)
+    {return (self.animation-timer.enabled?, self.animation-timer.interval)}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  惰性モード設定                                             }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     惰性モードを設定する。                              }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {set-momentum-mode}:void
+    set self.momentum-mode = true
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  惰性モード解除                                             }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     惰性モードを解除する。                              }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {reset-momentum-mode}:void
+    set self.momentum-mode = false
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  マウス移動制限                                             }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     カメラをマウス移動できなくする                      }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {camera-motion-none}:void
+    {if self.camera-motion-mode != CameraMotionMode.none then
+        set self.tmp-camera-mode = self.camera-motion-mode
+        set self.camera-motion-mode = CameraMotionMode.none
+    }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  マウス移動制限解除                                         }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     カメラをマウス移動できるようにする                  }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {camera-motion-ok}:void
+    {if self.tmp-camera-mode != CameraMotionMode.none then
+        set self.camera-motion-mode = self.tmp-camera-mode
+    }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  イベント追加                                               }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     イベントを追加する。                                }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter ev, イベント                                              }
+    {parameter times, 繰り返し回数                                       }
+    {parameter max-check?, イベント最大値チェックを行うか？              }
+  }
+  |######################################################################################|
+  {method public {add-event
+                     ev:CustomSceneGraphicEvent,
+                     times:int = 1,
+                     max-check?:bool = true
+                 }:void
+    
+    {inc self.event-max-id}
+    {if self.event-max-id > 10000 then
+        set self.event-max-id = 1
+    }
+    set ev.id = self.event-max-id
+    {for ii:int = 0 below times do
+        {if self.event-queue.size < self.event-max-size or
+            max-check? == false then
+            {self.event-queue.append ev}
+        }
+    }
+    {if self.event-queue.size > 0 then
+        {if (self.event-timer.enabled? == false) then
+            {self.event-timer.enable}
+        }
+    }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  イベント クリア                                            }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     イベントキューをクリアする。                        }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {clear-event}:void
+    {self.event-queue.clear}
+    {self.event-timer.disable}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  イベント実行                                               }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     イベントを実行する。                                }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter ev, イベント                                              }
+    {return-vals
+        継続実行可能か？　（壁に当たるなどで、継続実行不可）
+    }
+  }
+  |######################################################################################|
+  {method private {excute-event
+                      ev:CustomSceneGraphicEvent}:bool
+
+    let result:bool = true
+    
+    {if ev isa CustomSceneGraphicEyeMoveEvent then
+        let eye-move-event:CustomSceneGraphicEyeMoveEvent = (ev asa CustomSceneGraphicEyeMoveEvent)
+        let is-end?:bool = {self.movement-eyepoint eye-move-event.x, eye-move-event.y}
+        {if is-end? then
+            set result = false
+        }
+        
+     elseif ev isa CustomSceneGraphicViewMoveEvent then
+        let view-move-event:CustomSceneGraphicViewMoveEvent = (ev asa CustomSceneGraphicViewMoveEvent)
+        let is-end?:bool = {self.movement-viewpoint view-move-event.x, view-move-event.y}
+        {if is-end? then
+            set result = false
+        }
+
+     elseif ev isa CustomSceneGraphicUpDownEvent then
+        let updown-event:CustomSceneGraphicUpDownEvent = (ev asa CustomSceneGraphicUpDownEvent)
+        set self.eye-position = {Distance3d
+                                    self.eye-position.x,
+                                    self.eye-position.y,
+                                    self.eye-position.z + updown-event.z * 1mm}
+        {self.set-camera}
+        {self.update-drawable}
+        
+     elseif ev isa CustomSceneGraphicPanEvent then
+        let pan-event:CustomSceneGraphicPanEvent = (ev asa CustomSceneGraphicPanEvent)
+        let (now-azimuth:Angle, now-elevation:Angle) = {self.get-angle-view}
+        {self.set-angle-view now-azimuth + pan-event.angle, now-elevation}
+        {self.set-camera}
+||--        || 操作履歴のため、set-angle-viewを使用
+||--        {self.scene.camera.pan pan-event.angle}
+        {self.update-drawable}
+        
+     elseif ev isa CustomSceneGraphicTiltEvent then
+        let tilt-event:CustomSceneGraphicTiltEvent = (ev asa CustomSceneGraphicTiltEvent)
+        let (now-azimuth:Angle, now-elevation:Angle) = {self.get-angle-view}
+        {self.set-angle-view now-azimuth, now-elevation + tilt-event.angle}
+        {self.set-camera}
+||--        || 操作履歴のため、set-angle-viewを使用
+||--        {self.scene.camera.tilt tilt-event.angle}
+        {self.update-drawable}
+        
+     elseif ev isa CustomSceneGraphicEyeMoveViewChangeEvent then
+        let eye-view-event:CustomSceneGraphicEyeMoveViewChangeEvent = (ev asa CustomSceneGraphicEyeMoveViewChangeEvent)
+        let (now-azimuth:Angle, now-elevation:Angle) = {self.get-angle-view}
+        set self.eye-position = {Distance3d
+                                    {if eye-view-event.pos-x? then  eye-view-event.pos-x  else  self.eye-position.x},
+                                    {if eye-view-event.pos-y? then  eye-view-event.pos-y  else  self.eye-position.y},
+                                    {if eye-view-event.pos-z? then  eye-view-event.pos-z  else  self.eye-position.z}
+                                }
+        {self.set-angle-view
+            {if eye-view-event.azimuth?   then  eye-view-event.azimuth    else  now-azimuth},
+            {if eye-view-event.elevation? then  eye-view-event.elevation  else  now-elevation}
+        }
+        {self.set-camera}
+        {self.update-drawable}
+
+     elseif ev isa CustomSceneGraphicExecProcEvent then
+        let proc-event:CustomSceneGraphicExecProcEvent = (ev asa CustomSceneGraphicExecProcEvent)
+        let result:bool = {proc-event.proc}
+        
+    }
+    
+    {if-non-null self._exec-event-proc then
+        {self._exec-event-proc ev}
+    }
+    
+    {return result}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  カメラ左右回転                                             }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     カメラを左右に回転する。                            }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter angle, 回転角度                                           }
+  }
+  |######################################################################################|
+  {method public {camera-pan
+                     angle:Angle}:void
+    let step-angle:Angle = angle / 15
+    let ev:CustomSceneGraphicPanEvent = {CustomSceneGraphicPanEvent step-angle}
+    {self.add-event ev, times = 15}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  カメラ上下回転                                             }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     カメラを上下に回転する。                            }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter angle, 回転角度                                           }
+  }
+  |######################################################################################|
+  {method public {camera-tilt
+                     angle:Angle}:void
+    let step-angle:Angle = angle / 15
+    let ev:CustomSceneGraphicTiltEvent = {CustomSceneGraphicTiltEvent step-angle}
+    {self.add-event ev, times = 15}
+  }
+
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  マウス移動時処理                                           }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     マウスボタンを押しながら移動された時の処理を行います。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter button-pressed, マウスボタン                              }
+    {parameter delta-x, マウスＸ移動量                                   }
+    {parameter delta-y, マウスＹ移動量                                   }
+  }
+  |######################################################################################|
+  {method public {handle-motion
+                     button-pressed:int,
+                     delta-x:Distance,
+                     delta-y:Distance}:void
+    
+||--    || 標準の処理
+||--    {super.handle-motion button-pressed, delta-x, delta-y}
+
+    {if self.camera-motion-mode == CameraMotionMode.none then
+        {return}
+    }
+    
+    || マウスの情報を間引く
+    let move-x:int = {truncate delta-x / self.move-1px, 1.0} asa int
+    let move-y:int = {truncate delta-y / self.move-1px, 1.0} asa int
+    let move-step:int = {max {abs move-x}, {abs move-y}}
+||--    {log4c.info "handle-motion" &
+||--        "  Button: " & button-pressed &
+||--        "  X: " & delta-x & " ( " & move-x & " )" &
+||--        "  Y: " & delta-y & " ( " & move-y & " )" &
+||--        "  Max: " & move-step}
+    let step-x:double = move-x / move-step
+    let step-y:double = move-y / move-step
+    
+    {if button-pressed == 1 then
+        
+||--        {log4c.info "handle-motion" &
+||--            "  Button: " & button-pressed &
+||--            "  X: " & delta-x & " ( " & move-x & " )" &
+||--            "  Y: " & delta-y & " ( " & move-y & " )" &
+||--            "  Max: " & move-step}
+
+        || 視点移動
+        let ev:CustomSceneGraphicEyeMoveEvent = {CustomSceneGraphicEyeMoveEvent step-x, step-y}
+        {self.clear-event}
+        {self.add-event ev, times = {floor (move-step * self.mouse-step-ratio)} asa int}
+        
+     elseif button-pressed == 3 then
+        || 目線移動
+        let ev:CustomSceneGraphicViewMoveEvent = {CustomSceneGraphicViewMoveEvent step-x, step-y}
+        {self.clear-event}
+        {self.add-event ev, times = {floor (move-step * self.mouse-step-ratio)} asa int}
+        
+    }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  視点移動処理                                               }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     視点移動の処理を行います。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter delta-x, マウスＸ移動量                                   }
+    {parameter delta-y, マウスＹ移動量                                   }
+  }
+  |######################################################################################|
+  {method private {movement-eyepoint
+                      delta-x:double,
+                      delta-y:double
+                  }:bool
+
+    let camera:Camera = self.scene.camera
+    let eye-right-vec:Direction3d = {Geom.calc-rotate-vector -90deg, self.eye-front-vec}
+    let eye-left-vec:Direction3d  = {Geom.calc-rotate-vector  90deg, self.eye-front-vec}
+    let eye-back-vec:Direction3d  = {Direction3d
+                                        -self.eye-front-vec.x,
+                                        -self.eye-front-vec.y,
+                                        self.eye-front-vec.z}
+    
+||--    {log4c.info "Front: " & self.eye-front-vec}
+||--    {log4c.info "Right: " & eye-right-vec}
+||--    {log4c.info "Left : " & eye-left-vec}
+||--    {log4c.info "Back : " & eye-back-vec}
+    
+    || ボックスで大きくチェックしてみる。ボックス内に面がなければ、前左右面のチェックは不要。
+    let min-xyz:Distance3d = {Distance3d
+                                 self.eye-position.x - self.box-check-distance,
+                                 self.eye-position.y - self.box-check-distance,
+                                 self.eye-position.z + self.check-height-pos - 100mm}
+    let max-xyz:Distance3d = {Distance3d
+                                 self.eye-position.x + self.box-check-distance,
+                                 self.eye-position.y + self.box-check-distance,
+                                 self.eye-position.z - self.check-height-pos + 100mm}
+    let mpi:MultiPointIntersection = {self.scene.get-intersections
+                                         {BoxEvent
+                                             min-xyz,
+                                             max-xyz,
+                                             predicate = Predicate.first,
+                                             sort-order = SortOrder.none
+                                         }
+                                     }
+    {if not mpi.intersections.empty? then
+        
+||--        {log4c.info "移動前のチェック"}
+        
+||--        {log4c.info "移動前の前方チェック"}
+        let (result:int, result-poly:#CustomPolygonSet, result-point:Distance3d, result-dist:Distance) = {self.check-position-vector self.eye-position, self.eye-front-vec}
+||--        set self.sphere-front.world-position = result-point
+        {if result == 2 then
+            || 壁に当たりそうなので、すこし、戻す
+            let move-dist:Distance = self.postponement-wall - result-dist + self.move-step-dist
+            set self.eye-position = {Distance3d
+                                        self.eye-position.x - (self.eye-front-vec.x * move-dist),
+                                        self.eye-position.y - (self.eye-front-vec.y * move-dist),
+                                        self.eye-position.z - (self.eye-front-vec.z * move-dist)}
+            {self.set-camera}
+||--            {if-non-null result-poly then
+||--                {if not self.is-flash? then
+||--                    set self.is-flash? = true
+||--                    let fp:FillPattern = result-poly.fill-pattern
+||--                    let cnt:int = 0
+||--                    let t:Timer =
+||--                        {Timer
+||--                            interval = self.flash-interval,  repeat = self.flash-count,  delay = 0s,
+||--                            {on TimerEvent do
+||--                                {if cnt mod 2 == 0 then
+||--                                    set result-poly.fill-pattern = {FillPattern.from-rgb 1.0, 0.0, 0.0}
+||--                                    {self.update-drawable}
+||--                                 else
+||--                                    set result-poly.fill-pattern = fp
+||--                                    {self.update-drawable}
+||--                                }
+||--                                {inc cnt}
+||--                                {if cnt == self.flash-count then
+||--                                    set self.is-flash? = false
+||--                                }
+||--                            }
+||--                        }
+||--                }
+||--            }
+||--            {log4c.info "---< 前方壁に当たりそうなので、すこし、戻す >---"}
+            {return true}
+        }
+        
+||--        {log4c.info "移動前の左方チェック"}
+        set (result, result-poly, result-point, result-dist) = {self.check-position-vector self.eye-position, eye-left-vec}
+||--        set self.sphere-left.world-position = result-point
+        {if result == 2 then
+            || 壁に当たりそうなので、すこし、戻す
+            let move-dist:Distance = self.postponement-wall - result-dist + self.move-step-dist
+            set self.eye-position = {Distance3d
+                                        self.eye-position.x - (eye-left-vec.x * move-dist),
+                                        self.eye-position.y - (eye-left-vec.y * move-dist),
+                                        self.eye-position.z - (eye-left-vec.z * move-dist)}
+            {self.set-camera}
+||--            {if-non-null result-poly then
+||--                {if not self.is-flash? then
+||--                    set self.is-flash? = true
+||--                    let fp:FillPattern = result-poly.fill-pattern
+||--                    let cnt:int = 0
+||--                    let t:Timer =
+||--                        {Timer
+||--                            interval = self.flash-interval,  repeat = self.flash-count,  delay = 0s,
+||--                            {on TimerEvent do
+||--                                {if cnt mod 2 == 0 then
+||--                                    set result-poly.fill-pattern = {FillPattern.from-rgb 1.0, 0.0, 0.0}
+||--                                    {self.update-drawable}
+||--                                 else
+||--                                    set result-poly.fill-pattern = fp
+||--                                    {self.update-drawable}
+||--                                }
+||--                                {inc cnt}
+||--                                {if cnt == self.flash-count then
+||--                                    set self.is-flash? = false
+||--                                }
+||--                            }
+||--                        }
+||--                }
+||--            }
+||--            {log4c.info "---< 左方壁に当たりそうなので、すこし、戻す >---"}
+            {return true}
+        }
+        
+||--        {log4c.info "移動前の右方チェック"}
+        set (result, result-poly, result-point, result-dist) = {self.check-position-vector self.eye-position, eye-right-vec}
+||--        set self.sphere-right.world-position = result-point
+        {if result == 2 then
+            || 壁に当たりそうなので、すこし、戻す
+            let move-dist:Distance = self.postponement-wall - result-dist + self.move-step-dist
+            set self.eye-position = {Distance3d
+                                        self.eye-position.x - (eye-right-vec.x * move-dist),
+                                        self.eye-position.y - (eye-right-vec.y * move-dist),
+                                        self.eye-position.z - (eye-right-vec.z * move-dist)}
+            {self.set-camera}
+||--            {if-non-null result-poly then
+||--                {if not self.is-flash? then
+||--                    set self.is-flash? = true
+||--                    let fp:FillPattern = result-poly.fill-pattern
+||--                    let cnt:int = 0
+||--                    let t:Timer =
+||--                        {Timer
+||--                            interval = self.flash-interval,  repeat = self.flash-count,  delay = 0s,
+||--                            {on TimerEvent do
+||--                                {if cnt mod 2 == 0 then
+||--                                    set result-poly.fill-pattern = {FillPattern.from-rgb 1.0, 0.0, 0.0}
+||--                                    {self.update-drawable}
+||--                                 else
+||--                                    set result-poly.fill-pattern = fp
+||--                                    {self.update-drawable}
+||--                                }
+||--                                {inc cnt}
+||--                                {if cnt == self.flash-count then
+||--                                    set self.is-flash? = false
+||--                                }
+||--                            }
+||--                        }
+||--                }
+||--            }
+||--            {log4c.info "---< 右方壁に当たりそうなので、すこし、戻す >---"}
+            {return true}
+        }
+        
+||--        || 後方のチェックは不要
+||--        {log4c.info "移動前の後方チェック"}
+||--        set (result, result-poly, result-point, result-dist) = {self.check-position-vector self.eye-position, eye-back-vec}
+||--||--        set self.sphere-back.world-position = result-point
+||--        {if result == 2 then
+||--            || 壁に当たりそうなので、すこし、戻す
+||--            let move-dist:Distance = self.postponement-wall - result-dist + self.move-step-dist
+||--            set self.eye-position = {Distance3d
+||--                                        self.eye-position.x - (eye-back-vec.x * move-dist),
+||--                                        self.eye-position.y - (eye-back-vec.y * move-dist),
+||--                                        self.eye-position.z - (eye-back-vec.z * move-dist)}
+||--            {self.set-camera}
+||--||--            {if-non-null result-poly then
+||--||--                {if not self.is-flash? then
+||--||--                    set self.is-flash? = true
+||--||--                    let fp:FillPattern = result-poly.fill-pattern
+||--||--                    let cnt:int = 0
+||--||--                    let t:Timer =
+||--||--                        {Timer
+||--||--                            interval = self.flash-interval,  repeat = self.flash-count,  delay = 0s,
+||--||--                            {on TimerEvent do
+||--||--                                {if cnt mod 2 == 0 then
+||--||--                                    set result-poly.fill-pattern = {FillPattern.from-rgb 1.0, 0.0, 0.0}
+||--||--                                    {self.update-drawable}
+||--||--                                 else
+||--||--                                    set result-poly.fill-pattern = fp
+||--||--                                    {self.update-drawable}
+||--||--                                }
+||--||--                                {inc cnt}
+||--||--                                {if cnt == self.flash-count then
+||--||--                                    set self.is-flash? = false
+||--||--                                }
+||--||--                            }
+||--||--                        }
+||--||--                }
+||--||--            }
+||--            {log4c.info "---< 後方壁に当たりそうなので、すこし、戻す >---"}
+||--            {return true}
+||--        }
+        
+    }
+    
+    
+    let dxx:Distance = self.eye-position.x + (self.eye-front-vec.x * -delta-y * self.move-step-dist)
+    let dyy:Distance = self.eye-position.y + (self.eye-front-vec.y * -delta-y * self.move-step-dist)
+    let dzz:Distance = self.eye-position.z + (self.eye-front-vec.z * -delta-y * self.move-step-dist)
+    {if delta-x < 0.0 then
+        set dxx = dxx + (eye-left-vec.x * -delta-x * self.move-step-dist)
+        set dyy = dyy + (eye-left-vec.y * -delta-x * self.move-step-dist)
+        set dzz = dzz + (eye-left-vec.z * -delta-x * self.move-step-dist)
+     else
+        set dxx = dxx + (eye-right-vec.x * delta-x * self.move-step-dist)
+        set dyy = dyy + (eye-right-vec.y * delta-x * self.move-step-dist)
+        set dzz = dzz + (eye-right-vec.z * delta-x * self.move-step-dist)
+    }
+    let new-eye-position:Distance3d = {Distance3d dxx, dyy, dzz}
+    
+||--    {log4c.info ""}
+||--    {log4c.info "  xx: " & delta-x & "  yy: " & delta-y}
+||--    {log4c.info "  old-pos: " & self.eye-position & "  new-pos: " & new-eye-position}
+    
+    
+    {if not mpi.intersections.empty? then
+        
+||--        {log4c.info "移動後のチェック"}
+        
+||--        {log4c.info "移動後の前方チェック"}
+        let (result:int, result-poly:#CustomPolygonSet, result-point:Distance3d, result-dist:Distance) = {self.check-position-vector new-eye-position, self.eye-front-vec}
+||--        set self.sphere-front.world-position = result-point
+        {if result == 1 then
+||--            {log4c.info "---< 前方壁に当たっるので、移動しない >---"}
+            {return true}
+        }
+        
+||--        {log4c.info "移動後の左方チェック"}
+        set (result, result-poly, result-point, result-dist) = {self.check-position-vector new-eye-position, eye-left-vec}
+||--        set self.sphere-left.world-position = result-point
+        {if result == 1 then
+||--            {log4c.info "---< 左方壁に当たっるので、移動しない >---"}
+            {return true}
+        }
+        
+||--        {log4c.info "移動後の右方チェック"}
+        set (result, result-poly, result-point, result-dist) = {self.check-position-vector new-eye-position, eye-right-vec}
+||--        set self.sphere-right.world-position = result-point
+        {if result == 1 then
+||--            {log4c.info "---< 右方壁に当たっるので、移動しない >---"}
+            {return true}
+        }
+        
+||--        || 後方のチェックは不要
+||--        {log4c.info "移動後の後方チェック"}
+||--        set (result, result-poly, result-point, result-dist) = {self.check-position-vector new-eye-position, eye-back-vec}
+||--||--        set self.sphere-back.world-position = result-point
+||--        {if result == 1 then
+||--            {log4c.info "---< 後方壁に当たっるので、移動しない >---"}
+||--            {return true}
+||--        }
+        
+    }
+    
+    || 移動後の下方チェック
+    let is-move-ok?:bool = true
+    let (ground-poly:#CustomPolygonSet,
+         ground-point:Distance3d,
+         ground-dist:Distance) = {self.to-poly-distance
+                                     new-eye-position,
+                                     {Direction3d 0.0, 0.0, -1.0},
+                                     self.check-height-pos,
+                                     0mm}
+    {if-non-null ground-poly = ground-poly then
+        
+        || リンク情報のモデル切り替え機能対応
+        {if ground-poly.type == CustomPolygonSetType.link-image-info then
+            {if not self.down-event-wait? then
+                let ev:PointerPressSceneEvent = {PointerPressSceneEvent
+                                                    self.eye-position,
+                                                    self.eye-front-vec,
+                                                    1, 1,
+                                                    {StateMask.from-mask 0},
+                                                    0.1s}
+                {ground-poly.enqueue-event ev}
+                {self.clear-event}
+                set self.down-event-wait? = true
+                {after 1s do
+                    set self.down-event-wait? = false
+                }
+                {return true}
+            }
+        }
+        
+||--        {log4c.trace "下方チェック  ground-dist: " & ground-dist}
+        {if ground-dist < self.eye-height + self.check-height-pos - self.climb-able-height then
+||--            {log4c.info "---< 登れないので、移動しない >---  ID: " & ground-poly.id & "  ground-dist: " & ground-dist & "  差: " & self.eye-height + self.check-height-pos - self.climb-able-height}
+            set is-move-ok? = false
+         elseif ground-dist > self.eye-height + self.check-height-pos + self.jump-able-height then
+||--            {log4c.info "---< 岸壁なので、移動しない >---  ID: " & ground-poly.id & "  ground-dist: " & ground-dist & "  差: " & new-eye-position.z - self.eye-position.z}
+            set is-move-ok? = false
+         else
+||--            {log4c.trace "階段を登る前: " & new-eye-position}
+            || 段差を登る
+            set new-eye-position = {Distance3d
+                                       new-eye-position.x,
+                                       new-eye-position.y,
+                                       new-eye-position.z + (self.eye-height + self.check-height-pos - ground-dist)}
+||--            {log4c.info "---< 段差を登る >---"}
+||--            {log4c.trace "階段を登る後: " & new-eye-position & "  ground-dist: " & ground-dist & "  差: " & new-eye-position.z - self.eye-position.z}
+        }
+     else
+||--        {log4c.info "---< 下方がないので、移動しない >---"}
+        set is-move-ok? = false
+    }
+
+||--    {log4c.info "  NEW  front-vec: " & self.eye-front-vec & "  up-vec: " & self.up-vec & "  view-vec: " & self.view-vec}
+    
+    {if is-move-ok? then
+        set self.eye-position = {Distance3d new-eye-position.x, new-eye-position.y, new-eye-position.z}
+    }
+    
+    {self.set-camera}
+    {self.update-drawable}
+    {return false}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  視線移動処理                                               }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     視線移動の処理を行います。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter delta-x, マウスＸ移動量                                   }
+    {parameter delta-y, マウスＹ移動量                                   }
+  }
+  |######################################################################################|
+  {method private {movement-viewpoint
+                      delta-x:double,
+                      delta-y:double
+                  }:bool
+    
+    let camera:Camera = self.scene.camera
+    
+    || 左右方向の回転
+    let sslr:Angle = -delta-x * self.rotate-step-angle
+    let rot-mat-lr:Matrix3d = {Matrix3d.create-rotation {Direction3d 0.0, 0.0, 1.0}, sslr}
+    
+    || 上下方向の回転
+    let ssud:Angle = delta-y * self.rotate-step-angle
+    let rot-mat-ud:Matrix3d = {Matrix3d.create-rotation {Geom.calc-outer-product self.up-vec, self.view-vec}, ssud}
+    
+    || 上下角の妥当性チェック
+    let (ang:double, vec:Double3d, is-ok?:bool) = {Geom.calc-angle-2-vec self.eye-front-vec, self.view-vec}
+    let (ang-chk:double, vec-chk:Double3d, is-ok-chk?:bool) = {Geom.calc-angle-2-vec self.view-vec, self.up-vec}
+    {if not {Utility.is-same-Double3d-low-precision? vec, vec-chk} then
+        set ang = -ang
+    }
+    
+||--    {log4c.info "  左右角度:" & sslr / 1deg & "  上下角度: " & ssud / 1deg & "  仰角: " & ang}
+    
+    let is-up-down?:bool = true
+    let check-angle:double = ang - ssud / 1deg
+    {if check-angle < self.limit-angle-look-down or
+        check-angle > self.limit-angle-look-up then
+||--        {log4c.trace "上下角は、範囲外！！"}
+        set is-up-down? = false
+    }
+    
+    let (xx:double, yy:double, zz:double, ww:double)
+    set (xx, yy, zz, ww) = {rot-mat-lr.multiply self.eye-front-vec.x, self.eye-front-vec.y, self.eye-front-vec.z, 1.0}
+    set self.eye-front-vec = {Direction3d xx, yy, zz}
+
+    set (xx, yy, zz, ww) = {rot-mat-lr.multiply self.up-vec.x, self.up-vec.y, self.up-vec.z, 1.0}
+    {if is-up-down? then
+        set (xx, yy, zz, ww) = {rot-mat-ud.multiply xx, yy, zz, 1.0}
+    }
+    set self.up-vec = {Direction3d xx, yy, zz}
+    set (xx, yy, zz, ww) = {rot-mat-lr.multiply self.view-vec.x, self.view-vec.y, self.view-vec.z, 1.0}
+    {if is-up-down? then
+        set (xx, yy, zz, ww) = {rot-mat-ud.multiply xx, yy, zz, 1.0}
+    }
+    set self.view-vec = {Direction3d xx, yy, zz}
+    
+    {self.set-camera}
+    {self.update-drawable}
+    {return false}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  現在位置確認処理                                           }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     現在位置を確認します。
+                     前後左右について確認し、余裕がなければ、補正情報を返します。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter pos, 現在位置                                             }
+    {parameter vec, 視線ベクトル                                         }
+    {return-vals
+        状態　（0：壁はない、1：猶予距離内、2：最接近距離未満）,
+        壁PolygonSet,
+        距離
+    }
+  }
+  |######################################################################################|
+  {method private {check-position-vector
+                      pos:Distance3d,
+                      vec:Direction3d
+                  }:(int, #CustomPolygonSet, Distance3d, Distance)
+    
+    let result:int = 0
+    
+    let (front-poly:#CustomPolygonSet,
+         front-point:Distance3d,
+         front-dist:Distance) = {self.to-poly-distance
+                                    pos,
+                                    vec,
+                                    self.check-height-pos,
+                                    self.check-front-dist}
+    {if-non-null front-poly then
+        {if front-dist < self.most-approach then
+            set result = 1
+||--            {log4c.info "Result: 1  ポリゴンID  ： " & front-poly.id & " SubID: " & front-poly.sub-id & "  最短距離    ：" & front-dist & "  交点: " & front-point}
+         elseif front-dist < self.postponement-wall then
+            set result = 2
+||--            {log4c.info "Result: 2  ポリゴンID  ： " & front-poly.id & " SubID: " & front-poly.sub-id & "  最短距離    ：" & front-dist & "  交点: " & front-point}
+||--         else
+||--            {log4c.info "Result: 0  ポリゴンID  ： " & front-poly.id & " SubID: " & front-poly.sub-id & "  最短距離    ：" & front-dist & "  交点: " & front-point}
+        }
+     else
+||--        {log4c.info "Result: 0  ポリゴンID  ： なし！！！" & "  最短距離    ：" & front-dist & "  交点: " & front-point}
+    }
+    
+    {return (result, front-poly, front-point, front-dist)}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  PolygonSet交点計算                                         }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     Scene中のPolygonSetとの交点を求め、存在する場合は
+                     距離を計算します。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter base-pos, 現在位置                                        }
+    {parameter vec, 視線ベクトル                                         }
+    {parameter z-offset, 高さ方向オフセット                              }
+    {parameter check-dist, チェック距離                                  }
+    {return-vals
+        壁PolygonSet,
+        交点座標,
+        距離
+    }
+  }
+  |######################################################################################|
+  {method private {to-poly-distance
+                      base-pos:Distance3d,
+                      vec:Direction3d,
+                      z-offset:Distance,
+                      check-dist:Distance
+                  }:(#CustomPolygonSet, Distance3d, Distance)
+    
+||--    {log4c.trace "  to-poly-distance()"}
+||--    {log4c.trace "    base-pos: " & base-pos}
+||--    {log4c.trace "    vec: " & vec}
+||--    {log4c.trace "    z-offset: " & z-offset}
+||--    {log4c.trace "    check-dist: " & check-dist}
+    
+    let chk-base-pos:Distance3d = {Distance3d
+                                      base-pos.x,
+                                      base-pos.y,
+                                      base-pos.z + z-offset}
+    
+    let mpi:#MultiPointIntersection
+    {if {Utility.is-same-Distance? check-dist, 0mm} then
+        set mpi = {self.scene.get-intersections
+                      {RayEvent
+                          chk-base-pos,
+                          vec,
+                          predicate = Predicate.all,
+                          sort-order = SortOrder.none
+                      }
+                  }
+     else
+        set mpi = {self.scene.get-intersections
+                      {LineSegmentEvent 
+                          chk-base-pos,
+                          {Distance3d
+                              chk-base-pos.x + (vec.x * check-dist),
+                              chk-base-pos.y + (vec.y * check-dist),
+                              chk-base-pos.z + (vec.z * check-dist)},
+                          predicate = Predicate.all,
+                          sort-order = SortOrder.none
+                      }
+                  }
+    }
+    
+    let min-dist:Distance = max-double * 1mm
+    let min-poly:#CustomPolygonSet
+    let min-point:Distance3d = {Distance3d.zero}
+||--    {log4c.trace "  mpi.intersections: " & mpi.intersections.size}
+||--    {log4c.trace "  base-pos: " & base-pos & "  vec: " & vec & "  z-offset: " & z-offset & "  check-dist: " & check-dist}
+    
+    {if-non-null mpi = mpi then
+        {for pnt-inter:PointIntersection key ii in mpi.intersections do
+            {if pnt-inter.object isa CustomPolygonSet then
+                let cps:CustomPolygonSet = pnt-inter.object asa CustomPolygonSet
+                {if cps.is-intersection? then
+                    
+||--                    {log4c.trace "  coord: " & cps.vertices[0] & "  normal: " & cps.normals[0]}
+                    
+                    let vertices:{Array-of Double3d} = {new {Array-of Double3d}}
+                    {for coord key kk in cps.vertices do
+                        {vertices.append {Utility.FloatDistance3d2Double3d coord}}
+                    }
+                    let (inter-point:Double3d, is-ok?:bool) = {Geom.calc-coords-plane-intersection
+                                                                  vertices,
+                                                                  {Utility.Distance3d2Double3d chk-base-pos},
+                                                                  {Double3d
+                                                                      (chk-base-pos.x + (vec.x * 100m)) / 1mm,
+                                                                      (chk-base-pos.y + (vec.y * 100m)) / 1mm,
+                                                                      (chk-base-pos.z + (vec.z * 100m)) / 1mm}
+                                                              }
+                    
+                    let dist:Distance = 1000m
+                    {if is-ok? then
+                        set dist = {sqrt
+                                       (chk-base-pos.x / 1mm - inter-point.x) * (chk-base-pos.x / 1mm - inter-point.x) +
+                                       (chk-base-pos.y / 1mm - inter-point.y) * (chk-base-pos.y / 1mm - inter-point.y) +
+                                       (chk-base-pos.z / 1mm - inter-point.z) * (chk-base-pos.z / 1mm - inter-point.z)
+                                   } * 1mm
+                    }
+                    
+||--                    {log4c.trace "  ID: " & cps.id & " SubID: " & cps.sub-id "  ip: " & inter-point & "  dist: " & dist}
+                    
+                    {if (min-dist > dist and is-ok?) then
+                        set min-poly = cps
+                        set min-dist = dist
+                        set min-point = {Distance3d
+                                            inter-point.x * 1mm,
+                                            inter-point.y * 1mm,
+                                            inter-point.z * 1mm}
+                    }
+                }
+            }
+        }
+    }
+    
+||--    {if-non-null min-poly then
+||--        {log4c.trace "    →  min-poly: " & min-poly & " ( " & min-poly.id &  " - " & min-poly.sub-id & " )  min-dist: " & min-dist & "  min-point: " & min-point}
+||--     else
+||--        {log4c.trace "    →  min-poly: " & min-poly & "  min-dist: " & min-dist & "  min-point: " & min-point}
+||--    }
+    {return (min-poly, min-point, min-dist)}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 指示座標より選択されたポリゴン情報を取得                    }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     画面上の指示座標より交点計算により選択された
+                     ポリゴンを特定し、交点と共の返します。              }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter xx, 画面指示Ｘ座標                                        }
+    {parameter yy, 画面指示Ｙ座標                                        }
+    {parameter id, ポリゴンID　（対象ポリゴンを限定する場合のみ指定）    }
+    {return-vals
+        選択されたPolygonSet,
+        カメラ位置からの距離,
+        交点座標
+    }
+  }
+  |######################################################################################|
+  {method public {get-select-polygon
+                     xx:Distance,
+                     yy:Distance,
+                     id:int = -1
+                 }:(#CustomPolygonSet, Distance, Distance3d)
+    
+    let result-poly:#CustomPolygonSet = null
+    let result-dist:Distance = max-double * 1mm
+    let result-point:Distance3d = {Distance3d.zero}
+
+    || 指示座標を３次元座標に変換する
+    let (origin:FloatDistance3d, direction:FloatDirection3d) = {self.scene.viewport-point-to-ray
+                                                                   {Distance2d xx, yy},
+                                                                   {any-to-Distance self.drawable.width},
+                                                                   {any-to-Distance self.drawable.height},
+                                                                   near-plane-point-origin? = true}
+
+    || 指示ポリゴンを特定する
+||--    || Curl標準機能で交点を求める場合（標準ではPolygonSetのbounding-boxで処理されるため、実交点にならない）
+||--    let mpi:MultiPointIntersection = {self.scene.get-intersections
+||--                                         {RayEvent
+||--                                             {Distance3d origin.x, origin.y, origin.z},
+||--                                             {Direction3d direction.x, direction.y, direction.z},
+||--                                             predicate = Predicate.first,
+||--                                             sort-order = SortOrder.forward
+||--                                         }
+||--                                     }
+||--
+||--||--    {log4c.trace "  mpi.intersections: " & mpi.intersections}
+||--    {for pnt-inter:PointIntersection key ii in mpi.intersections do
+||--        {if pnt-inter.object isa CustomPolygonSet then
+||--            let cps:CustomPolygonSet = pnt-inter.object asa CustomPolygonSet
+||--            {if cps.is-intersection? then
+||--||--                {log4c.trace "  Click: " & cps.id}
+||--                set dist = {sqrt
+||--                               (origin.x / 1mm - pnt-inter.intersection-point.x) * (origin.x / 1mm - pnt-inter.intersection-point.x) +
+||--                               (origin.y / 1mm - pnt-inter.intersection-point.y) * (origin.y / 1mm - pnt-inter.intersection-point.y) +
+||--                               (origin.z / 1mm - pnt-inter.intersection-point.z) * (origin.z / 1mm - pnt-inter.intersection-point.z)
+||--                           } * 1mm
+||--                
+||--||--                {log4c.trace "  ID: " & cps.id & "  ip: " & pnt-inter.intersection-point & "  dist: " & dist}
+||--                
+||--                {if result-dist > dist and
+||--                    (id == -1 or (id != -1 and cps.id == id))
+||--                 then
+||--                    set result-poly = cps
+||--                    set result-dist = dist
+||--                    set result-point = pnt-inter.intersection-point
+||--                }
+||--            }
+||--        }
+||--    }
+
+    || 処理対象のPolygonSetを絞り込み、実交点は独自に計算している
+    let mpi:MultiPointIntersection = {self.scene.get-intersections
+                                         {RayEvent
+                                             {Distance3d origin.x, origin.y, origin.z},
+                                             {Direction3d direction.x, direction.y, direction.z},
+                                             predicate = Predicate.all,
+                                             sort-order = SortOrder.forward
+                                         }
+                                     }
+
+||--    {log4c.trace "  mpi.intersections: " & mpi.intersections.size}
+||--    {log4c.trace "  origin: " & origin & "  direction: " & direction}
+    
+    {for pnt-inter:PointIntersection key ii in mpi.intersections do
+        {if pnt-inter.object isa CustomPolygonSet then
+            let cps:CustomPolygonSet = pnt-inter.object asa CustomPolygonSet
+            {if cps.is-intersection? then
+                let vertices:{Array-of Double3d} = {new {Array-of Double3d}}
+                {for coord key kk in cps.vertices do
+                    {vertices.append {Utility.FloatDistance3d2Double3d coord}}
+                }
+                let (inter-point:Double3d, is-ok?:bool) = {Geom.calc-coords-plane-intersection
+                                                              vertices,
+                                                              {Utility.Distance3d2Double3d origin},
+                                                              {Double3d
+                                                                  (origin.x + (direction.x * 100m)) / 1mm,
+                                                                  (origin.y + (direction.y * 100m)) / 1mm,
+                                                                  (origin.z + (direction.z * 100m)) / 1mm}
+                                                          }
+                
+                let dist:Distance = 1000m
+                {if is-ok? then
+                    set dist = {sqrt
+                                   (origin.x / 1mm - inter-point.x) * (origin.x / 1mm - inter-point.x) +
+                                   (origin.y / 1mm - inter-point.y) * (origin.y / 1mm - inter-point.y) +
+                                   (origin.z / 1mm - inter-point.z) * (origin.z / 1mm - inter-point.z)
+                               } * 1mm
+                }
+                
+||--                {log4c.trace "  ID: " & cps.id & "  ip: " & inter-point & "  dist: " & dist}
+                
+                {if is-ok? and
+                    result-dist > dist and
+                    (id == -1 or (id != -1 and cps.id == id))
+                 then
+                    set result-poly = cps
+                    set result-dist = dist
+                    set result-point = {Distance3d
+                                           inter-point.x * 1mm,
+                                           inter-point.y * 1mm,
+                                           inter-point.z * 1mm}
+                }
+            }
+        }
+    }
+
+    {return (result-poly, result-dist, result-point)}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  オブジェクト矩形取得                                       }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     Scene中のオブジェクトの最小座標、最大座標を算出します。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        最小座標,
+        最大座標
+    }
+  }
+  |######################################################################################|
+  {method public {get-world-bounding-box}:(Distance3d, Distance3d)
+    
+    let min-x:Distance = 9999m
+    let min-y:Distance = 9999m
+    let min-z:Distance = 9999m
+    let max-x:Distance = -9999m
+    let max-y:Distance = -9999m
+    let max-z:Distance = -9999m
+    let s:Scene = super.scene
+    
+    {for obj:SceneObject in s.objects do
+        {if obj isa SceneGroup then
+            {let (min-xyz:Distance3d, max-xyz:Distance3d, valid-bounds?:bool) =
+                {obj.get-world-bounding-box}}
+
+            || 最小座標
+            {if min-x > min-xyz.x then
+                set min-x = min-xyz.x
+            }
+            {if min-y > min-xyz.y then
+                set min-y = min-xyz.y
+            }
+            {if min-z > min-xyz.z then
+                set min-z = min-xyz.z
+            }
+
+            || 最大座標
+            {if max-x < max-xyz.x then
+                set max-x = max-xyz.x
+            }
+            {if max-y < max-xyz.y then
+                set max-y = max-xyz.y
+            }
+            {if max-z < max-xyz.z then
+                set max-z = max-xyz.z
+            }
+        }
+    }
+    
+    {return ({Distance3d min-x, min-y, min-z},
+             {Distance3d max-x, max-y, max-z})}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  視点変更＋視線変更処理                                     }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     視点変更、視線変更のイベントを登録します。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        変更前視点座標,
+        変更前方位角,
+        変更前仰角,
+        変更後視点座標,
+        変更後方位角,
+        変更後仰角,
+        イベント分割数
+    }
+  }
+  |######################################################################################|
+  {method public {move-eye-view-from-to
+                     from-pos:Distance3d,
+                     from-azimuth:Angle,
+                     from-elevation:Angle,
+                     to-pos:Distance3d,
+                     to-azimuth:Angle,
+                     to-elevation:Angle,
+                     step:int
+                 }:void
+
+    let step-xx:Distance        = (to-pos.x - from-pos.x) / step
+    let step-yy:Distance        = (to-pos.y - from-pos.y) / step
+    let step-zz:Distance        = (to-pos.z - from-pos.z) / step
+    let azimuth:Angle           = (to-azimuth - from-azimuth)
+    {if azimuth < 0deg then
+        set azimuth = azimuth + 360deg
+    }
+    {if {abs azimuth} > 180deg then
+        set azimuth = azimuth - 360deg
+    }
+    let step-azimuth:Angle      = azimuth / step
+    let elevation:Angle         = (to-elevation - from-elevation)
+    {if elevation < 0deg then
+        set elevation = elevation + 360deg
+    }
+    {if {abs elevation} > 180deg then
+        set elevation = elevation - 360deg
+    }
+    let step-elevation:Angle    = elevation / step
+    
+    {self.clear-event}
+    {for ii = 0 below step do
+        let ev:CustomSceneGraphicEyeMoveViewChangeEvent = {CustomSceneGraphicEyeMoveViewChangeEvent
+                                                              from-pos.x     + ii * step-xx,        true,
+                                                              from-pos.y     + ii * step-yy,        true,
+                                                              from-pos.z     + ii * step-zz,        true,
+                                                              from-azimuth   + ii * step-azimuth,   true,
+                                                              from-elevation + ii * step-elevation, true}
+        {self.add-event ev, times = 1, max-check? = false}
+    }
+    let ev:CustomSceneGraphicEyeMoveViewChangeEvent = {CustomSceneGraphicEyeMoveViewChangeEvent
+                                                          to-pos.x,     true,
+                                                          to-pos.y,     true,
+                                                          to-pos.z,     true,
+                                                          to-azimuth,   true,
+                                                          to-elevation, true}
+    {self.add-event ev, times = 1, max-check? = false}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  イベント実行時の呼び出し関数の設定                         }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     イベント実行時の呼び出し関数を登録します。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter proc, イベント実行時の呼び出し関数                        }
+  }
+  |######################################################################################|
+  {method public {set-exec-event-proc
+                     proc:{proc-type {event:CustomSceneGraphicEvent}:bool}
+                 }:void
+    set self._exec-event-proc = proc
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose  イベント実行時の呼び出し関数の解除                         }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     イベント実行時の呼び出し関数を解除します。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter proc, イベント実行時の呼び出し関数                        }
+  }
+  |######################################################################################|
+  {method public {unset-exec-event-proc}:void
+    set self._exec-event-proc = null
+  }
+  
+  
+}

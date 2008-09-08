@@ -1,0 +1,78 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  リンクボタン                                                             }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     リンクのように下線表示されるボタン
+                 }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public LinkButton {inherits CommandButton}
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose リンクボタンのコンストラクタ                                }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     初期処理を行う。                                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter label, ラベル文字                                         }
+  }
+  |######################################################################################|
+  {constructor public {default
+                          label:String="",
+                          ...}
+    {construct-super 
+        style = "label-only",
+        control-appearance-changeable? = true,
+        font-size = 10pt,
+        reactive-label =
+            {ReactiveLabel
+                label =
+                    {text
+                        color = control-text-color,
+                        {value label}
+                    },
+                label-rollover =
+                    {text
+                        color = control-rollover-color,
+                        text-underline? = true,
+                        {value label}
+                    }
+            },
+        {splice ...}
+    }
+  }
+
+  
+}

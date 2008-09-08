@@ -1,0 +1,210 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  カスタム シーン                                                          }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     カスタム シーン。
+                 }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public CustomScene {inherits Scene}
+  
+  |###|{doc-next {purpose 霧効果有無}}|###|
+  field private fog?:bool = true
+  
+  |###|{doc-next {purpose 霧開始距離}}|###|
+  field private fog-start:Distance = 15m
+  
+  |###|{doc-next {purpose 霧終了距離}}|###|
+  field private fog-end:Distance = 30m
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose カスタム シーンのコンストラクタ                             }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     初期処理を行う。                                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {constructor public {default ...}
+    {construct-super
+        {splice ...}}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 霧効果有無設定                                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     霧効果霧効果を設定する。                            }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter fog?, 霧効果有無                                          }
+  }
+  |######################################################################################|
+  {method public {set-fog fog?:bool}:void
+    set self.fog? = fog?
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 霧効果有無取得                                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     霧効果有無を取得する。                              }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        霧効果有無
+    }
+  }
+  |######################################################################################|
+  {method public {get-fog}:bool
+    {return self.fog?}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 霧開始距離設定                                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     霧の開始距離を設定する。                            }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter fog-start, 霧開始距離                                     }
+  }
+  |######################################################################################|
+  {method public {set-fog-start fog-start:Distance}:void
+    set self.fog-start = fog-start
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 霧開始距離取得                                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     霧の開始距離を取得する。                            }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        霧開始距離
+    }
+  }
+  |######################################################################################|
+  {method public {get-fog-start}:Distance
+    {return self.fog-start}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 霧終了距離設定                                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     霧の終了距離を設定する。                            }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter fog-end, 霧終了距離                                       }
+  }
+  |######################################################################################|
+  {method public {set-fog-end fog-end:Distance}:void
+    set self.fog-end = fog-end
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 霧終了距離取得                                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     霧の終了距離を取得する。                            }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        霧終了距離
+    }
+  }
+  |######################################################################################|
+  {method public {get-fog-end}:Distance
+    {return self.fog-end}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 霧効果追加                                                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     霧効果を追加する。                                  }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter ren, Renderer3d                                           }
+  }
+  |######################################################################################|
+  {method open public inline {draw-faces ren:Renderer3d}:void
+
+    || Set rendering options
+||--    set ren.cull-face-enabled? = true
+    set ren.depth-test-enabled? = true
+    set ren.fog-enabled?        = self.fog?
+    set ren.fog-mode            = FogMode.linear
+    set ren.fog-density         = .1
+    set ren.fog-color           = {Color.from-string CustomSceneGraphic.back-color}
+    set ren.fog-start           = self.fog-start
+    set ren.fog-end             = self.fog-end
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose シーン描画                                                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     シーンの描画を行う。                                }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter ren, Renderer3d                                           }
+    {parameter vw, 幅                                                    }
+    {parameter vh, 高さ                                                  }
+  }
+  |######################################################################################|
+  || Sceneから呼び出される paintメソッドをオーバーライド
+  {method open public {paint ren:Renderer3d, vw:Distance, vh:Distance}:void
+
+    || 霧効果を追加
+    {self.draw-faces ren}
+
+    || 本来の描画処理を呼び出す
+    {super.paint ren, vw, vh}
+    
+  }
+  
+  
+}

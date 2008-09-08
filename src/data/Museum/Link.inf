@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LinkImageInfoDoc>
+  <Document>
+    <LinkImageInfo>
+      <id>2</id>
+      <title>Yahoo!!!</title>
+      <face>244</face>
+      <xx>10000</xx>
+      <yy>200</yy>
+      <ww>10000</ww>
+      <hh>2600</hh>
+      <offset>120</offset>
+      <image>../image/03_s.jpg</image>
+      <jump>http://www.yahoo.co.jp/</jump>
+      <info>{text font-size = 30pt,Yahooのホーム{br}画面です。}</info>
+    </LinkImageInfo>
+    <LinkImageInfo>
+      <id>5</id>
+      <title>空中レイアウト</title>
+      <face>32</face>
+      <xx>2000</xx>
+      <yy>500</yy>
+      <ww>2000</ww>
+      <hh>2000</hh>
+      <offset>2000</offset>
+      <image>../image/09_s.jpg</image>
+      <jump></jump>
+      <info>壁から、２ｍm離した位置にレイアウト</info>
+    </LinkImageInfo>
+    <LinkImageInfo>
+      <id>6</id>
+      <title>上りボタン</title>
+      <face>283</face>
+      <xx>1200</xx>
+      <yy>1500</yy>
+      <ww>300</ww>
+      <hh>300</hh>
+      <offset>20</offset>
+      <image>../image/07_s.jpg</image>
+      <jump>Elevator:3000:2000:100</jump>
+      <info>「上にまいりまぁ～す。」
+もっと近づいて下さい。</info>
+    </LinkImageInfo>
+    <LinkImageInfo>
+      <id>7</id>
+      <title>下りボタン</title>
+      <face>282</face>
+      <xx>1200</xx>
+      <yy>1100</yy>
+      <ww>300</ww>
+      <hh>300</hh>
+      <offset>20</offset>
+      <image>../image/04_s.jpg</image>
+      <jump>Elevator:-3000:2000:100</jump>
+      <info>「下にまいりまぁ～す。」
+もっと近づいて下さい。</info>
+    </LinkImageInfo>
+    <LinkImageInfo>
+      <id>8</id>
+      <title>上りボタン</title>
+      <face>282</face>
+      <xx>1200</xx>
+      <yy>1500</yy>
+      <ww>300</ww>
+      <hh>300</hh>
+      <offset>20</offset>
+      <image>../image/07_s.jpg</image>
+      <jump>Elevator:3000:2000:100</jump>
+      <info>「上にまいりまぁ～す。」
+もっと近づいて下さい。</info>
+    </LinkImageInfo>
+    <LinkImageInfo>
+      <id>9</id>
+      <title>下りボタン</title>
+      <face>281</face>
+      <xx>1200</xx>
+      <yy>1100</yy>
+      <ww>300</ww>
+      <hh>300</hh>
+      <offset>20</offset>
+      <image>../image/04_s.jpg</image>
+      <jump>Elevator:-3000:2000:100</jump>
+      <info>「下にまいりまぁ～す。」
+もっと近づいて下さい。</info>
+    </LinkImageInfo>
+    <LinkImageInfo>
+      <id>10</id>
+      <title>上りボタン</title>
+      <face>281</face>
+      <xx>1200</xx>
+      <yy>1500</yy>
+      <ww>300</ww>
+      <hh>300</hh>
+      <offset>20</offset>
+      <image>../image/07_s.jpg</image>
+      <jump>Elevator:3000:2000:100</jump>
+      <info>「上にまいりまぁ～す。」
+もっと近づいて下さい。</info>
+    </LinkImageInfo>
+    <LinkImageInfo>
+      <id>11</id>
+      <title>下りボタン</title>
+      <face>271</face>
+      <xx>1200</xx>
+      <yy>1100</yy>
+      <ww>300</ww>
+      <hh>300</hh>
+      <offset>20</offset>
+      <image>../image/04_s.jpg</image>
+      <jump>Elevator:-3000:2000:100</jump>
+      <info>「下にまいりまぁ～す。」
+もっと近づいて下さい。</info>
+    </LinkImageInfo>
+    <LinkImageInfo>
+      <id>13</id>
+      <title>モデル切り替え</title>
+      <face>255</face>
+      <xx>41221</xx>
+      <yy>13162</yy>
+      <ww>2000</ww>
+      <hh>2000</hh>
+      <offset>10</offset>
+      <image>Concrete_Aggregate_Smoke.jpg</image>
+      <jump>ChangeModel:data/Pyramid/pyramid.kml:data/Pyramid/Link.inf::1:0.1</jump>
+      <info>ピラミッドに切り替えます。</info>
+    </LinkImageInfo>
+    <LinkImageInfo>
+      <id>3</id>
+      <title>猫の本</title>
+      <face>251</face>
+      <xx>996</xx>
+      <yy>886</yy>
+      <ww>2000</ww>
+      <hh>1600</hh>
+      <offset>100</offset>
+      <image>../image/11_s.jpg</image>
+      <jump>http://www.amazon.co.jp/I-Am-Cat-Alice-Schertle/dp/0688131530</jump>
+      <info>I am Cat</info>
+    </LinkImageInfo>
+    <LinkImageInfo>
+      <id>4</id>
+      <title>グーグル</title>
+      <face>251</face>
+      <xx>3999</xx>
+      <yy>892</yy>
+      <ww>2000</ww>
+      <hh>1600</hh>
+      <offset>100</offset>
+      <image>../image/20_s.jpg</image>
+      <jump>http://www.google.co.jp/</jump>
+      <info>Google検索</info>
+    </LinkImageInfo>
+    <LinkImageInfo>
+      <id>12</id>
+      <title>幾何学模様</title>
+      <face>251</face>
+      <xx>6513</xx>
+      <yy>899</yy>
+      <ww>2000</ww>
+      <hh>1600</hh>
+      <offset>150</offset>
+      <image>../image/10_s.jpg</image>
+      <jump>http://www.google.com/search?hl=ja&amp;lr=lang_ja&amp;ie=UTF-8&amp;oe=UTF-8&amp;q=幾何学模様&amp;num=50</jump>
+      <info>「幾何学模様」を検索
+&amp;&amp;&gt;&gt;&lt;&lt;&quot;&quot;&apos;&apos;
+特殊文字にも対応
+a
+b
+c
+d
+e
+f
+g
+h
+i
+j
+k
+l
+m
+n
+o
+p
+q
+r
+s
+t
+u
+v
+w
+x
+y
+z</info>
+    </LinkImageInfo>
+    <LinkImageInfo>
+      <id>14</id>
+      <title>Curl</title>
+      <face>251</face>
+      <xx>8995</xx>
+      <yy>246</yy>
+      <ww>4809</ww>
+      <hh>2286</hh>
+      <offset>200</offset>
+      <image>../../image/_Curl_Logo_/_Curl_Logo_.gif</image>
+      <jump>http://www.curlap.com/</jump>
+      <info>Curl</info>
+    </LinkImageInfo>
+  </Document>
+</LinkImageInfoDoc>

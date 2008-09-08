@@ -1,0 +1,2308 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  情報管理オブジェクト                                                     }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     モデル、リンク情報の管理を行う。
+                 }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public ObjectManager
+  
+  |###|{doc-next {purpose ObjectManagerの実体（Singleton）}}|###|
+  let   private _singleton:#ObjectManager
+  
+  |###|{doc-next {purpose メイン画面更新処理関数}}|###|
+  let   private _refresh-contents:#{proc-type {}:void}
+  
+  |###|{doc-next {purpose 要素配列}}|###|
+  field private _maked-elements:{Array-of ModelElement}
+  
+  |###|{doc-next {purpose リンク情報配列}}|###|
+  field private _maked-infos:{Array-of LinkImageInfo}
+  
+  |###|{doc-next {purpose モデル}}|###|
+  field private _managedType:{HashTable-of String, ModelElement}
+  
+  |###|{doc-next {purpose モデル情報のURL}}|###|
+  field private _model-url:#Url
+  
+  |###|{doc-next {purpose リンク情報のイベント処理可能か？}}|###|
+  field private _info-event?:bool
+  
+  |###|{doc-next {purpose 操作系イベント処理可能か？}}|###|
+  field private _exec-event?:bool
+  
+  |###|{doc-next {purpose 全体表示から回復したときの処理}}|###|
+  field private _total-indication-recovery-proc:#{proc-type {}:bool}
+  
+  |###|{doc-next {purpose 全体表示の時、近クリップ面調整ダイアログを表示するか？}}|###|
+  field private _total-indication-use-near-dialog?:bool = true
+  
+  |###|{doc-next {purpose 全体表示モードか？}}|###|
+  field private _view-total-indication?:bool
+  
+  
+  |###|{doc-next {purpose 操作履歴リスト}}|###|
+  field private _opetrace-list:{Array-of OpeTrace}
+  
+  |###|{doc-next {purpose 操作履歴処理位置}}|###|
+  field private _opetrace-pos:int
+  
+  |###|{doc-next {purpose 全体表示から回復したときの処理}}|###|
+  field private _opetrace-recovery-proc:#{proc-type {}:bool}
+  
+  |###|{doc-next {purpose 操作履歴タイマー}}|###|
+  field private _opetrace-timer:Timer
+  
+  |###|{doc-next {purpose 操作履歴タイマー処理}}|###|
+  field private _opetrace-timer-proc:#{proc-type {}:bool}
+  
+  |###|{doc-next {purpose 操作履歴オートリピート}}|###|
+  field private _opetrace-auto-repeat?:bool = true
+  
+  
+  |###|{doc-next {purpose テキスト色}}|###|
+  def public text-color:String = "#EEEEEE"
+  
+  |###|{doc-next {purpose テキスト背景色}}|###|
+  def public text-background:String = "#888888"
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 情報管理オブジェクトのコンストラクタ                        }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     初期処理を行う。                                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {constructor private {default}
+    
+    set self._maked-elements = {new {Array-of ModelElement}}
+    set self._maked-infos = {new {Array-of LinkImageInfo}}
+    set self._managedType = {new {HashTable-of String, ModelElement},
+                                "LineString", {PolyLineElement},
+                                "Polygon",   {ThreeDFaceElement}
+                            }
+    set self._info-event? = true
+    set self._exec-event? = true
+    set self._view-total-indication? = false
+    
+    || 操作履歴
+    set self._opetrace-list = {new {Array-of OpeTrace}}
+    set self._opetrace-pos = 0
+    set self._opetrace-timer = {Timer
+                                   enabled? = false,
+                                   repeat = 1,
+                                   interval = 1000ms,
+                                   {on TimerEvent do
+                                       {if-non-null self._opetrace-timer-proc then
+                                           {self._opetrace-timer-proc}
+                                       }
+                                   }
+                               }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 情報管理オブジェクトを返すファクトリー                      }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     情報管理オブジェクトを返す。
+                     未設定の場合は、新規に生成する。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        情報管理オブジェクト
+    }
+  }
+  |######################################################################################|
+  {factory public {get-singleton}:ObjectManager
+    {if ObjectManager._singleton == null then
+        set ObjectManager._singleton = {ObjectManager}
+    }
+    {return {non-null ObjectManager._singleton}}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 情報管理オブジェクトの削除                                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     情報管理オブジェクトを削除します。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {notes
+        モデル情報を読み直す場合に使用します。
+    }
+  }
+  |######################################################################################|
+  {method public {reset}:void
+    set ObjectManager._singleton = null
+    {garbage-collect}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose リンク情報のイベント処理の有効化                            }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     リンク情報のイベント処理を有効にします。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {enable-info-event?}:void
+    set self._info-event? = true
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose リンク情報のイベント処理の無効化                            }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     リンク情報のイベント処理を無効にします。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {disable-info-event?}:void
+    set self._info-event? = false
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose リンク情報のイベント処理状態取得                            }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     リンク情報のイベント処理状態（有効／無効）を返します。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        状態（有効／無効）
+    }
+  }
+  |######################################################################################|
+  {method public {get-info-event?}:bool
+    {return self._info-event?}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 操作系イベント処理の有効化                                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     操作系イベント処理を有効にします。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {enable-exec-event?}:void
+    set self._exec-event? = true
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 操作系イベント処理の無効化                                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     操作系イベント処理を無効にします。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {disable-exec-event?}:void
+    set self._exec-event? = false
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 操作系イベント処理状態取得                                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     操作系イベント処理状態（有効／無効）を返します。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        状態（有効／無効）
+    }
+  }
+  |######################################################################################|
+  {method public {get-exec-event?}:bool
+    {return self._exec-event?}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose モデル要素生成                                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     クラス名よりモデル要素のインスタンスを返します。
+                     該当する要素が存在しなかった場合は、null値を返します。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        要素のインスタンス
+    }
+  }
+  |######################################################################################|
+  {method public {search-type
+                     key:String}:#ModelElement
+    
+    let (value:ModelElement, found?:bool) = {self._managedType.get-if-exists key}
+    {if found? then
+        {return {value.make-self}}
+    }
+    
+    {return null}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose メイン画面更新処理関数の登録                                }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     メイン画面更新処理関数トを登録します。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {notes
+        モデル切り替え機能にて、モデルを変更した際に使用します。
+    }
+  }
+  |######################################################################################|
+  {method public {set-refresh-contents proc:#{proc-type {}:void}}:void
+    set ObjectManager._refresh-contents = proc
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 全リンク情報取得                                            }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     リンク情報配列を返します。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        リンク情報配列
+    }
+  }
+  |######################################################################################|
+  {method public {get-all-infos}:{Array-of LinkImageInfo}
+    {return self._maked-infos}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 要素追加                                                    }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     要素を追加します。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter elem, 要素                                                }
+  }
+  |######################################################################################|
+  {method public {add-element
+                     elem:ModelElement}:void
+    {self._maked-elements.append elem}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose リンク情報追加                                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     リンク情報を追加します。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter graphic, SceneGraphic                                     }
+    {parameter elem, リンク情報                                          }
+  }
+  |######################################################################################|
+  {method public {add-info
+                     graphic:CustomSceneGraphic,
+                     elem:LinkImageInfo}:void
+    
+    {if-non-null polygon = elem.polygon then
+        {polygon.add-event-handler 
+            {on ev:PointerPressSceneEvent at obj:CustomPolygonSet do
+||--                {log4c.info "LinkImageInfo ポリゴンID: " & obj.id & " SubID: " & obj.sub-id}
+                
+                let normal-link?:bool = true
+
+                || リンク情報が無効の場合（例：リンク情報設定中は、無効となっている）、
+                || 左ボタン以外の押下では、処理しない
+                {if not self._info-event? or
+                    ev.button != 1 then
+                    {ev.consume}
+                    {return}
+                }
+
+                || リンク先は、コマンド設定か？
+                {if {Utility.url-is-exist? elem.jump} or
+                    elem.jump.empty? then
+
+                    || メッセージ表示
+                    {self.disp-link-info-message elem}
+                    
+                 else
+
+                    || リンク先は、コマンド設定
+                    {if {elem.jump.find-string "Elevator"} == 0 and
+                        ev.intersection isa PointIntersection then
+                        
+                        || エレベータ機能
+                        set normal-link? = false
+                        let point-inter:PointIntersection = ev.intersection asa PointIntersection
+                        let para-array:StringArray = {elem.jump.split split-chars = ":"}
+                        {if para-array.size >= 4 then
+                            let updown:double = {para-array[1].to-double}
+                            let near-dist:double = {para-array[2].to-double}
+                            let divide:int = {para-array[3].to-int}
+                            let (ex:Distance, ey:Distance, ez:Distance) = {graphic.get-eye-position}
+                            || 距離は、水平距離で測るため、exは使用せずに、指示点のzを用いる
+                            let dist:double = {Geom.calc-point-point-dist
+                                                  {Utility.Distance3d2Double3d
+                                                      {Distance3d ex, ey, point-inter.intersection-point.z}},
+                                                  {Utility.Distance3d2Double3d
+                                                      point-inter.intersection-point}}
+                            {if dist < near-dist then
+                                || エレベータ移動
+                                {if {abs updown} < 1000.0 then set updown = 1000.0}
+                                
+                                let step-updown:double = updown / divide
+                                let ev-updown:CustomSceneGraphicUpDownEvent = {CustomSceneGraphicUpDownEvent step-updown}
+                                {graphic.add-event ev-updown, times = divide, max-check? = false}
+                                let ev-proc:CustomSceneGraphicExecProcEvent = {CustomSceneGraphicExecProcEvent
+                                                                                  {proc {}:bool
+                                                                                      {graphic.camera-motion-ok}
+                                                                                      {return true}
+                                                                                  }}
+                                {graphic.add-event ev-proc, times = 1, max-check? = false}
+                                || エレベータ動作中のオペレーションを中止する
+                                {graphic.camera-motion-none}
+                                {return}
+                             else
+                                || 遠いので、メッセージを表示する
+                                {self.disp-link-info-message elem, info-only? = true}
+                            }
+                        }
+
+                     elseif {elem.jump.find-string "ChangeModel"} == 0 then
+                        
+                        || モデル切り替え機能
+                        set normal-link? = false
+                        {if not ev.intersection isa PointIntersection then
+                            let para-array:StringArray = {elem.jump.split split-chars = ":"}
+                            {if para-array.size >= 6 then
+                                let para-model-url:String = para-array[1]
+                                let para-infos-url:String = para-array[2]
+                                let para-ope-url:String = para-array[3]
+                                let popup-dialog?:bool = {if {para-array[4].to-int} == 0 then false else true}
+                                let delay:Time = {para-array[5].to-double} * 1s
+                                let result:String = Dialog.ok
+                                {if popup-dialog? then
+                                    {self.disable-exec-event?}
+                                    set result = {self.disp-link-info-message
+                                                     elem,
+                                                     info-only? = true,
+                                                     cancel? = true}
+                                    {self.enable-exec-event?}
+                                }
+
+                                {if {result.equal? Dialog.ok} then
+                                    {after delay do
+                                        {if-non-null model-url = self._model-url then
+                                            let new-model-url:Url = {url {{get-the-applet}.url.merge para-model-url}.name}
+                                            let new-infos-url:Url = {url {{get-the-applet}.url.merge para-infos-url}.name}
+                                            let new-ope-url:Url = {url {{get-the-applet}.url.merge para-ope-url}.name}
+
+                                            {try
+                                                {if not para-model-url.empty? then
+                                                    {if {Utility.url-is-exist? new-model-url.name} then
+                                                        {self.read-model-from-file graphic, new-model-url}
+                                                     else
+                                                        {Utility.popup-msg
+                                                            {paragraph
+                                                                {paragraph {lmessage モデル切り替え定義のモデル情報が不正です。}}
+                                                                {String new-model-url.name}}}
+                                                        {return}
+                                                    }
+                                                }
+                                                {after 0.01s do
+                                                    {try
+                                                        let obj-man:ObjectManager = {ObjectManager.get-singleton}
+                                                        {if not para-infos-url.empty? then
+                                                            {if {Utility.url-is-exist? new-infos-url.name} then
+                                                                {obj-man.read-info-from-file graphic, new-infos-url}
+                                                             else
+                                                                {Utility.popup-msg
+                                                                    {paragraph
+                                                                        {paragraph {lmessage モデル切り替え定義のリンク情報が不正です。}}
+                                                                        {String new-infos-url.name}}}
+                                                                {return}
+                                                            }
+                                                        }
+                                                     catch e:Exception do
+                                                        {log4c.error e.value}
+                                                        {Utility.popup-msg {lmessage リンク情報読み込みで例外が発生しました。}}
+                                                    }
+                                                }
+                                                {after 0.01s do
+                                                    {try
+                                                        let obj-man:ObjectManager = {ObjectManager.get-singleton}
+                                                        {if not para-ope-url.empty? then
+                                                            {if {Utility.url-is-exist? new-ope-url.name} then
+                                                                {obj-man.read-opetrace-from-file graphic, new-ope-url}
+                                                             else
+                                                                {Utility.popup-msg
+                                                                    {paragraph
+                                                                        {paragraph {lmessage モデル切り替え定義の操作履歴情報が不正です。}}
+                                                                        {String new-ope-url.name}}}
+                                                                {return}
+                                                            }
+                                                        }
+                                                        {ObjectManager._refresh-contents}
+                                                     catch e:Exception do
+                                                        {log4c.error e.value}
+                                                        {Utility.popup-msg {lmessage 操作履歴読み込みで例外が発生しました。}}
+                                                    }
+                                                }
+                                             catch e:Exception do
+                                                {log4c.error e.value}
+                                                {Utility.popup-msg {lmessage モデル情報読み込みで例外が発生しました。}}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        {return}
+
+                    }
+                }
+            }}
+        
+        {graphic.scene.add-object polygon}
+        
+        || アニメーション対応
+        {if polygon.fill-pattern isa MultiFrameImageFillPattern then
+            let (anime?:bool, anime-interval:Time) = {graphic.get-animation}
+            {if not anime? then
+                {graphic.set-animation true, anime-interval}
+            }
+        }
+        
+    }
+    
+    {graphic.update-drawable}
+    
+    {self._maked-infos.append elem}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose リンク情報ダイアログ表示                                    }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     リンク情報の内容に従って、ダイアログを表示します。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter elem, リンク情報                                          }
+    {parameter info-only?, コメントのみ表示か？
+        　（リンク部は表示しない）                                       }
+    {parameter cancel?, キャンセルボタンを表示するか？                   }
+  }
+  |######################################################################################|
+  {method private {disp-link-info-message
+                      elem:LinkImageInfo,
+                      info-only?:bool = false,
+                      cancel?:bool = false
+                  }:String
+    
+    || elem.infoをevaluateしてみて、駄目であれば、self.infoをそのまま表示する
+    let info:any
+    {try
+        set info = {evaluate
+                       elem.info}
+     catch e:Exception do
+        set info = {paragraph
+                       text-preserve-whitespace? = true,{String elem.info}}
+    }
+    
+    let result:String = ""
+    {if {Utility.url-is-exist? elem.jump} and
+        not info-only? then
+        set result = {Utility.popup-msg
+                         title = elem.title,
+                         cancel? = cancel?,
+                         {VBox
+                             {LinkButton
+                                 background = {manifest-url "image", "MenuBar"},
+                                 color = ObjectManager.text-color,
+                                 label = {lmessage リンクを新規に開く},
+                                 {on Action do
+                                     || 押下時の処理
+                                     {browse-url
+                                         target = "new",
+                                         {url elem.jump}
+                                     }
+                                 }
+                             },
+                             {hrule},
+                             info
+                         }
+                     }
+     else
+        set result = {Utility.popup-msg
+                         title = elem.title,
+                         cancel? = cancel?,
+                         {Frame
+                             info}
+                     }
+    }
+
+    {return result}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 要素取得                                                    }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     指定IDの要素を取得します。
+                     存在しない場合は、nullを返します。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter id, ID                                                    }
+    {return-vals
+        要素
+    }
+  }
+  |######################################################################################|
+  {method public {get-element
+                     id:int}:#ModelElement
+    {for elem:ModelElement key ii in self._maked-elements do
+        {if elem.id == id then
+            {return elem}
+        }
+    }
+
+    {return null}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose リンク情報取得                                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     指定IDのリンク情報を取得します。
+                     存在しない場合は、nullを返します。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter id, ID                                                    }
+    {return-vals
+        リンク情報
+    }
+  }
+  |######################################################################################|
+  {method public {get-info
+                     id:int}:#LinkImageInfo
+    {for info:LinkImageInfo key ii in self._maked-infos do
+        {if info.id == id then
+            {return info}
+        }
+    }
+
+    {return null}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 要素削除                                                    }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     指定IDの要素を削除します。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter id, ID                                                    }
+    {return-vals
+        削除されたか？　（存在しない場合）
+    }
+  }
+  |######################################################################################|
+  {method public {del-element
+                     id:int}:bool
+    {for elem:ModelElement key ii in self._maked-elements do
+        {if elem.id == id then
+            {self._maked-elements.remove ii}
+            {return true}
+        }
+    }
+
+    {return false}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose リンク情報削除                                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     指定IDのリンク情報を削除します。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter graphic, SceneGraphic                                     }
+    {parameter id, ID                                                    }
+    {return-vals
+        削除されたか？　（存在しない場合）
+    }
+  }
+  |######################################################################################|
+  {method public {del-info
+                     graphic:CustomSceneGraphic,
+                     id:int}:bool
+    {for info:LinkImageInfo key ii in self._maked-infos do
+        {if info.id == id then
+            {self._maked-infos.remove ii}
+            {if-non-null polygon = info.polygon then
+                {graphic.scene.remove-object polygon}
+            }
+
+            || アニメーション対応
+            let (anime?:bool, anime-interval:Time) = {graphic.get-animation}
+            {graphic.set-animation false, anime-interval}
+            {for info:LinkImageInfo key ii in self._maked-infos do
+                {if-non-null polygon = info.polygon then
+                    {if polygon.fill-pattern isa MultiFrameImageFillPattern then
+                        {if not anime? then
+                            {graphic.set-animation true, anime-interval}
+                            {break}
+                        }
+                    }
+                }
+            }
+            {return true}
+        }
+    }
+
+    {return false}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose モデルファイル読み込み確認                                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     モデルファイルが読み込まれているかを確認する。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        読み込み状態
+    }
+  }
+  |######################################################################################|
+  {method public {read-model?}:bool
+    {if self._maked-elements.size == 0 then
+        {return false}
+    }
+    
+    {return true}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose モデルファイル読み込み                                      }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     モデルファイル選択を行い、読み込みを行う。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter graphic, SceneGraphic                                     }
+    {return-vals
+        読み込んだURL名
+    }
+  }
+  |######################################################################################|
+  {method public {read-model
+                     graphic:CustomSceneGraphic}:String
+    let filters:{Array-of FileDialogFilter} = {new
+                                                  {Array-of FileDialogFilter},
+                                                  {FileDialogFilter
+                                                      "KML file",
+                                                      {new
+                                                          {Array-of FileDialogTypeFilter},
+                                                          {FileDialogTypeFilter "kml"}
+                                                      }
+                                                  }
+                                              }
+
+    let return-str:String = ""
+    let file-url:#Url = {choose-file
+                            style = FileDialogStyle.read,
+                            filters = filters,
+                            title = {lmessage モデル情報ファイル読み込み}}
+    {if-non-null file-url then
+        set return-str = {self.read-model-from-file graphic, file-url}
+    }
+    
+    {return return-str}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose モデルファイル読み込み                                      }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     モデルファイルを指定し、読み込みを行う。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter graphic, SceneGraphic                                     }
+    {parameter file-url, モデルファイルURL                               }
+    {return-vals
+        読み込んだURL名
+    }
+  }
+  |######################################################################################|
+  {method public {read-model-from-file
+                     graphic:CustomSceneGraphic,
+                     file-url:Url
+                 }:String
+    
+    let return-str:String = ""
+    
+    || データの生成
+    let parser:SAXParser = {SAXParser}
+    let handler:GeometryHandler = {GeometryHandler}    
+    {parser.set-content-handler handler}
+    
+    || KMLデータの読み込み
+    {parser.parse
+        {InputSource character-stream = {read-open file-url}}
+    }
+    
+    {self.reset}
+
+    || モデル切り替え機能対応のため、一旦、制御を戻した後に実行する
+    {after 0.01s do
+        
+        let obj-man:ObjectManager = {ObjectManager.get-singleton}
+        
+        let line-cnt:int
+        let poly-cnt:int
+        
+        || 基点情報の取得
+        let ccx:double = handler.origin.coordinate[0] asa double
+        let ccy:double = handler.origin.coordinate[1] asa double
+        let ccz:double = handler.origin.coordinate[2] asa double
+        let base-coord:Double3d = {Double3d ccx, ccy, ccz}
+||--    {log4c.debug "基点情報: " & base-coord}
+        
+        || 各色情報
+        let colors-poly:{HashTable-of String, Pixel} = {new {HashTable-of String, Pixel}}
+        let colors-line:{HashTable-of String, Pixel} = {new {HashTable-of String, Pixel}}
+        let textures:{HashTable-of String, FillPattern} = {new {HashTable-of String, FillPattern}}
+        
+        {for v in handler.styles do
+            {if-non-null v.poly-style then
+                || 面の色
+                let rgbal:{Array-of int} = {Utility.hexa-to-deci {non-null v.poly-style.color}}
+                {colors-poly.set {non-null v.id}, {Pixel.from-int
+                                                      rgbal[3],
+                                                      rgbal[2],
+                                                      rgbal[1],
+                                                      alpha = rgbal[0]}}
+            }
+            {if-non-null v.line-style then
+                || 線の色
+                let rgbal:{Array-of int} = {Utility.hexa-to-deci {non-null v.line-style.color}}
+                {colors-line.set {non-null v.id}, {Pixel.from-int
+                                                      rgbal[3],
+                                                      rgbal[2],
+                                                      rgbal[1],
+                                                      alpha = rgbal[0]}}
+            }
+        }
+        
+        || テクスチャを事前に取得しておく
+        {with-compiler-directives allow-any-calls? = true do
+            {for v key ii in handler.kml-document do
+                let texture-str:String = {v.style-url.trim-left-clone trim-chars = {CharClass "#"}} asa String
+                let (result-key:String, found?:bool) = {textures.get-key-if-exists texture-str}
+                {if not found? then
+                    let is-texture?:bool = false
+                    let wk-tex-file:Url = {url file-url.parent-dir-name & file-url.separator & texture-str & ".jpg"}
+                    {if {Utility.url-is-exist? wk-tex-file.name} then
+                        set is-texture? = true
+                     else
+                        set wk-tex-file = {url file-url.parent-dir-name & file-url.separator & texture-str & ".jpeg"}
+                        {if {Utility.url-is-exist? wk-tex-file.name} then
+                            set is-texture? = true
+                         else
+                            set wk-tex-file = {url file-url.parent-dir-name & file-url.separator & texture-str & ".gif"}
+                            {if {Utility.url-is-exist? wk-tex-file.name} then
+                                set is-texture? = true
+                             else
+                                set wk-tex-file = {url file-url.parent-dir-name & file-url.separator & texture-str & ".png"}
+                                {if {Utility.url-is-exist? wk-tex-file.name} then
+                                    set is-texture? = true
+                                }
+                            }
+                        }
+                    }
+                    {if is-texture? then
+                        {textures.set texture-str, {FillPattern.from-url wk-tex-file}}
+                    }
+                }
+            }
+        }
+        
+        let number-of-elem:int = 0
+        
+        || 頂点情報の取得
+        {with-compiler-directives allow-any-calls? = true do
+            {for v key ii in handler.kml-document do
+                
+                || <GeometryCollection>
+                {for vv key jj in v.geometry do
+                    
+                    {if vv isa Polygon then
+                        || <Polygon>
+                        let making-elem:#ThreeDFaceElement = {obj-man.search-type {type-of vv}.name} asa ThreeDFaceElement
+                        {if-non-null making-elem then
+
+                            {inc poly-cnt}
+                            let read-outer-coords:{Array-of Double3d} = {new {Array-of Double3d}}
+                            let read-inner-coords-array:{Array-of {Array-of Double3d}} = {new {Array-of {Array-of Double3d}}}
+
+                            || 頂点情報
+                            {for c in vv.outer-boundary-is.linear-ring.coordinates do
+                                let pcoord:Double3d = {Double3d c.t0 asa double, c.t1 asa double, c.t2 asa double}
+                                let wk-coord:Double3d = {Geom.conv-latitude-longitude base-coord, pcoord}
+                                {read-outer-coords.append wk-coord}
+                            }
+
+                            || くり抜き情報
+                            {if-non-null vv.inner-boundary-is then
+                                {for cc in vv.inner-boundary-is do
+                                    let wk-inner-coords:{Array-of Double3d} = {new {Array-of Double3d}}
+                                    {for c in cc.linear-ring.coordinates do
+                                        let pcoord:Double3d = {Double3d c.t0 asa double, c.t1 asa double, c.t2 asa double}
+                                        let wk-coord:Double3d = {Geom.conv-latitude-longitude base-coord, pcoord}
+                                        {wk-inner-coords.append wk-coord}
+                                    }
+                                    {read-inner-coords-array.append wk-inner-coords}
+                                }
+                            }
+                            
+||--                            {for coord key k in read-outer-coords do
+||--                                {log4c.debug "Polygon頂点情報 [" & number-of-elem & "][" & k & "] " & coord}
+||--                            }
+||--                            {for coords key k in read-inner-coords-array do
+||--                                {for coord key kk in coords do
+||--                                    {log4c.debug "Polygonくり抜き頂点情報 [" & number-of-elem & "][" & k & "][" & kk & "] " & coord}
+||--                                }
+||--                            }
+                            
+                            || 最初と最後の点が同一の場合、最後を消す
+                            {if {Utility.is-same-Double3d?
+                                    read-outer-coords[0],
+                                    read-outer-coords[read-outer-coords.size - 1]} then
+                                {read-outer-coords.remove read-outer-coords.size - 1}
+                            }
+                            {for coords key k in read-inner-coords-array do
+                                {if {Utility.is-same-Double3d?
+                                        coords[0],
+                                        coords[coords.size - 1]} then
+                                    {coords.remove coords.size - 1}
+                                }
+                            }
+                            
+                            || 頂点列を正規化する
+                            let coords:{Array-of Double3d} = {Geom.normalization-coords read-outer-coords, read-inner-coords-array}
+||--                            {log4c.debug "Polygon頂点情報 正規化後 Num: " & outer-coords.size}
+||--                            {for coord key kk in outer-coords do
+||--                                {log4c.debug "Polygon頂点情報 正規化後 [" & kk & "] " & coord}
+||--                            }
+                            
+                            || 要素を作成
+                            {inc number-of-elem}
+                            {making-elem.coords-array.append coords}
+                            set making-elem.style = {v.style-url.trim-left-clone trim-chars = {CharClass "#"}} asa String
+                            set making-elem.color = {colors-poly.get-if-exists making-elem.style}
+                            set (making-elem.texture, making-elem.is-texture?) = {textures.get-if-exists making-elem.style}
+                            
+                            || 作成した要素を追加
+                            {obj-man.add-element making-elem}
+                            
+                        }
+                        
+                     elseif vv isa LineString then
+                        || <LineString>
+
+||--                        || 「LineString」は、処理しない
+||--                        let making-elem:#PolyLineElement = {obj-man.search-type {type-of vv}.name} asa PolyLineElement
+||--                        {if-non-null making-elem then
+||--
+||--                            {inc line-cnt}
+||--                            let read-coords:{Array-of Double3d} = {new {Array-of Double3d}}
+||--                            
+||--                            {for c key kk in vv.coordinates do
+||--                                let pcoord:Double3d = {Double3d c.t0 asa double, c.t1 asa double, c.t2 asa double}
+||--                                let wk-coord:Double3d = {Geom.conv-latitude-longitude base-coord, pcoord}
+||--                                {log4c.debug "LineString頂点情報 [" & number-of-elem & "][" & kk & "] " & {Utility.Double3d2FloatDistance3d wk-coord}}
+||--                                {read-coords.append wk-coord}
+||--                            }
+||--                            
+||--                            || 要素を作成
+||--                            {inc number-of-elem}
+||--                            {making-elem.coords-array.append read-coords}
+||--                            set making-elem.style = {v.style-url.trim-left-clone trim-chars = {CharClass "#"}} asa String
+||--                            set making-elem.rgbal = {colors-line.get-if-exists making-elem.style}
+||--                            set making-elem.color = {Pixel.from-int
+||--                                                        making-elem.rgbal[3],
+||--                                                        making-elem.rgbal[2],
+||--                                                        making-elem.rgbal[1],
+||--                                                        alpha = making-elem.rgbal[0]}
+||--                            set making-elem.base-path = file-url.parent-dir-name
+||--                            
+||--                            || 作成した要素を追加
+||--                            {obj-man.add-element making-elem}
+||--                            
+||--                        }
+                        
+                     else
+                        {continue}
+                    }
+                }
+
+            }
+        }
+        
+        || ポリゴン作成
+        let (polygons:CustomSceneGroup, polygon-num:int) = {obj-man.make-polygon-sets
+                                                               graphic, file-name = file-url.filename}
+        
+        || 新規シーンに追加
+        let new-scene:CustomScene = {CustomScene}
+        {new-scene.add-object polygons}
+        set graphic.scene = new-scene
+        
+        || カメラを設定
+        {graphic.camera-init}
+        {graphic.camera-motion-ok}
+        {graphic.update-drawable}
+        
+        set obj-man._model-url = file-url
+        {garbage-collect}
+        
+    }
+    
+    set return-str = file-url.filename
+    {return return-str}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 要素ポリゴン生成                                            }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     以下の処理を行う。
+                     全要素のポリゴンを生成する。
+                     全要素の法線ベクトルの調整を行う。
+                     （球形、円錐形、円筒形、曲面などを滑らかに見せるため）
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter graphic, SceneGraphic                                     }
+    {parameter file-name, モデルファイルURL名                            }
+    {return-vals
+        SceneGroup,
+        生成ポリゴン数
+    }
+  }
+  |######################################################################################|
+  {method public {make-polygon-sets
+                     graphic:CustomSceneGraphic,
+                     file-name:String = ""
+                 }:(CustomSceneGroup, int)
+    
+    let ret:CustomSceneGroup = {CustomSceneGroup}
+    
+    || ファイル名を設定
+    set ret.name = file-name
+
+    
+    || ----------------------------------------
+    || 法線ベクトルを調整する
+    let pnt:{Array-of {Array-of FloatDirection3d}} = {new {Array-of {Array-of FloatDirection3d}}}
+    let nml:{Array-of {Array-of FloatDirection3d}} = {new {Array-of {Array-of FloatDirection3d}}}
+    let num:{Array-of int} = {new {Array-of int}}
+
+    || 座標点列から法線ベクトルを求める
+    let elem-num:int = 0
+    let polygon-num:int = 0
+    {for elem:ModelElement key ii in self._maked-elements do
+        
+        {inc elem-num}
+        
+        {if elem isa ThreeDFaceElement then
+            {(elem asa ThreeDFaceElement).remake-polygon}
+            {(elem asa ThreeDFaceElement).make-polygon elem-num}
+            {for ii:int = 0 below (elem asa ThreeDFaceElement).coords-array.size do
+                let wk-pnt:{Array-of FloatDirection3d} = {new {Array-of FloatDirection3d}}
+                {for jj:int = 0 below (elem asa ThreeDFaceElement).coords-array[ii].size do
+                    let wk:FloatDirection3d = {FloatDirection3d
+                                                  (elem asa ThreeDFaceElement).coords-array[ii][jj].x asa float,
+                                                  (elem asa ThreeDFaceElement).coords-array[ii][jj].y asa float,
+                                                  (elem asa ThreeDFaceElement).coords-array[ii][jj].z asa float}
+                    {wk-pnt.append wk}
+                }
+                let wk-nml:{Array-of FloatDirection3d} = {new {Array-of FloatDirection3d}}
+                {for jj:int = 0 below (elem asa ThreeDFaceElement).normals-array[ii].size do
+                    let wk:FloatDirection3d = {FloatDirection3d
+                                                  (elem asa ThreeDFaceElement).normals-array[ii][jj].x asa float,
+                                                  (elem asa ThreeDFaceElement).normals-array[ii][jj].y asa float,
+                                                  (elem asa ThreeDFaceElement).normals-array[ii][jj].z asa float}
+                    {wk-nml.append wk}
+                }
+                {num.append elem-num}
+                {pnt.append wk-pnt}
+                {nml.append wk-nml}
+                {inc polygon-num}
+            }
+
+            {for poly key jj in elem.polygon-sets do
+                set poly.lighting-enabled? = true
+                set poly.specular-color = {Color.from-rgb .7, .7, .7}
+                {if poly.is-intersection? then
+                    || ポリゴンにイベントを追加
+                    {poly.add-event-handler
+                        {on e:PointerPressSceneEvent at obj:CustomPolygonSet do
+                            {log4c.info "Polygon ID: " & obj.id & "  SubID: " & obj.sub-id}
+                        }
+                    }
+                }
+                
+                {ret.add-object poly}
+                {inc polygon-num}
+            }
+            
+         elseif elem isa PolyLineElement then
+            
+            {elem.make-polygon elem-num}
+            {for poly key jj in elem.polygon-sets do
+||--                {if poly.is-intersection? then
+||--                    || ポリラインにイベントを追加
+||--                    {poly.add-event-handler
+||--                        {on PointerPressSceneEvent at obj:CustomPolygonSet do
+||--                            {log4c.info "ポリラインID: " & obj.id & " SubID: " & obj.sub-id}
+||--                        }
+||--                    }
+||--                }
+                
+                {ret.add-object poly}
+            }
+            
+        }
+    }
+    
+||--    {log4c.trace "                                        "}
+||--    {log4c.trace "====< 法線ベクトル調整前 >=============="}
+||--    {for ii:int = 0 below num.size do
+||--        {log4c.trace "ii: " & ii & "  面番号: " & num[ii] & "  頂点数: " & pnt[ii].size & "  法線数: " & nml[ii].size}
+||--        {for jj:int = 0 below pnt[ii].size do
+||--            {log4c.trace "    jj: " & jj & "  頂点: " & pnt[ii][jj] & "  法線: " & nml[ii][jj]}
+||--        }
+||--    }
+||--    {log4c.trace "========================================"}
+||--    {log4c.trace "                                        "}
+    
+    || すべての面の総当たりで、法線ベクトルを調整する
+    ||
+    ||    スムージング角度
+    ||    シェーディングにて頂点法線を利用すると(頂点以外の座標では補間することに
+    ||    なります)それこそ滑らかになりますが、たとえばサイコロのような立方体の場合
+    ||    は頂点法線は使ってはいけません。このときは面法線を採用します。
+    ||    このように時と場合によって「面法線」「頂点法線」の利用を使い分けますが、
+    ||    「スムージング角度」としてマテリアルのパラメータ（またはオブジェクト自身
+    ||    のパラメータ）を持たせることが多いようです。
+    ||    
+    ||    スムージングの角度を最大30°としたときの面の表面のとある座標位置での面法線
+    ||    をN、頂点法線をVNとして考えます。
+    ||    c1 = N.x * VN.x + N.y * VN.y + N.z * VN.z
+    ||    c2 = cos(30 * 3.1415926535 / 180.0)
+    ||    「c1 >= c2」のときは頂点法線を採用します。
+    ||    「c1 < c2」のときは面法線を採用します。
+    ||    スムージング角度が大きいほどスムーズになり、スムージング角度が小さいとフラ
+    ||    ットなシェーディングになります。
+    let threshold:double = {cos 30deg}
+    {for iiPg1 = 0 below pnt.size do
+        {for iiPg2 = 0 below pnt.size do
+            {if (iiPg1 == iiPg2) then
+                {continue}
+            }
+            {for iiPnt1 = 0 below pnt[iiPg1].size do
+                {for iiPnt2 = 0 below pnt[iiPg2].size do
+                    {if (pnt[iiPg1][iiPnt1] == pnt[iiPg2][iiPnt2]) then
+                        let v1:Double3d = {Double3d
+                                              nml[iiPg1][iiPnt1].x,
+                                              nml[iiPg1][iiPnt1].y,
+                                              nml[iiPg1][iiPnt1].z}
+                        let v2:Double3d = {Double3d
+                                              nml[iiPg2][iiPnt2].x,
+                                              nml[iiPg2][iiPnt2].y,
+                                              nml[iiPg2][iiPnt2].z}
+                        {if (v1.zero-magnitude? != true and v2.zero-magnitude? != true) then
+                            let vec1:Double3d = {v1.direction}
+                            let vec2:Double3d = {v2.direction}
+                            let ang:double = (vec1.x * vec2.x + vec1.y * vec2.y + vec1.z * vec2.z)
+                            {if (ang > threshold) then
+                                let n1:FloatDirection3d = {FloatDirection3d
+                                                              (nml[iiPg1][iiPnt1].x + nml[iiPg2][iiPnt2].x),
+                                                              (nml[iiPg1][iiPnt1].y + nml[iiPg2][iiPnt2].y),
+                                                              (nml[iiPg1][iiPnt1].z + nml[iiPg2][iiPnt2].z)}
+                                {if (n1.zero-magnitude? != true) then
+                                    let new-nml:{Vector3d-of float} = {n1.direction}
+                                    set nml[iiPg1][iiPnt1] = {FloatDirection3d
+                                                                 new-nml.x, new-nml.y, new-nml.z}
+                                    set nml[iiPg2][iiPnt2] = nml[iiPg1][iiPnt1]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+||--    {log4c.trace "                                        "}
+||--    {log4c.trace "====< 法線ベクトル調整後 >=============="}
+||--    {for ii:int = 0 below num.size do
+||--        {log4c.trace "ii: " & ii & "  面番号: " & num[ii] & "  頂点数: " & pnt[ii].size & "  法線数: " & nml[ii].size}
+||--        {for jj:int = 0 below pnt[ii].size do
+||--            {log4c.trace "    jj: " & jj & "  頂点: " & pnt[ii][jj] & "  法線: " & nml[ii][jj]}
+||--        }
+||--    }
+||--    {log4c.trace "========================================"}
+||--    {log4c.trace "                                        "}
+||--    {log4c.trace "  polygon-num: " & polygon-num}
+||--    {log4c.trace "  num: " & num.size}
+||--    {log4c.trace "  pnt: " & pnt.size}
+||--    {log4c.trace "  nml: " & nml.size}
+    
+    || 法線ベクトルの再設定
+    set polygon-num = 0
+    {for elem:ModelElement key ii in self._maked-elements do
+||--        {log4c.trace "  ii: " & ii}
+        {if elem isa ThreeDFaceElement then
+            {for poly key jj in elem.polygon-sets do
+||--                {log4c.trace "  ThreeDFaceElement  ii: " & ii & "  jj: " & jj}
+                {if poly.primitive-type == PrimitiveType.polygon then
+                    || 法線ベクトルの再設定
+                    set poly.normals = nml[polygon-num]
+                    
+||--                    || 法線ベクトルの可視化
+||--                    {for kk = 0 below nml[polygon-num].size do
+||--                        let arrow:Arrow3D = {Arrow3D
+||--                                                lighting-enabled? = true,
+||--                                                res = 6,
+||--                                                size-r =  30f(mm),
+||--                                                size-l = 150f(mm),
+||--                                                vector = nml[polygon-num][kk],
+||--                                                fill-pattern = {FillPattern.get-orange}}
+||--                        {ret.add-object arrow}
+||--                        {arrow.translate  pnt[polygon-num][kk].x * 1mm, pnt[polygon-num][kk].y * 1mm, pnt[polygon-num][kk].z * 1mm}
+||--                    }
+                    
+                    {inc polygon-num}
+                }
+            }
+        }
+    }
+    
+    {return ret, polygon-num}
+    
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose リンク情報ファイル読み込み                                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     リンク情報ファイル選択を行い、読み込みを行う。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter graphic, SceneGraphic                                     }
+    {return-vals
+        読み込んだURL名
+    }
+  }
+  |######################################################################################|
+  {method public {read-info
+                     graphic:CustomSceneGraphic}:String
+    
+    let return-str:String = ""
+    
+    {if not {self.read-model?} then
+        {Utility.popup-msg {lmessage モデルファイルが読み込まれていません。}}
+        {return return-str}
+    }
+    
+    let filters:{Array-of FileDialogFilter} = {new {Array-of FileDialogFilter},
+                                                  {FileDialogFilter
+                                                      "Info file",
+                                                      {new
+                                                          {Array-of FileDialogTypeFilter},
+                                                          {FileDialogTypeFilter "inf"}
+                                                      }
+                                                  }
+                                              }
+    
+    let file-url:#Url = {choose-file
+                            style = FileDialogStyle.read,
+                            filters = filters,
+                            title = {lmessage リンク情報ファイル読み込み}}
+    {if-non-null file-url = file-url then
+        set return-str = {self.read-info-from-file graphic, file-url}
+    }
+    
+    {return return-str}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose リンク情報ファイル読み込み                                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     リンク情報ファイルを指定し、読み込みを行う。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter graphic, SceneGraphic                                     }
+    {parameter file-url, リンク情報ファイルURL                           }
+    {return-vals
+        読み込んだURL名
+    }
+  }
+  |######################################################################################|
+  {method public {read-info-from-file
+                     graphic:CustomSceneGraphic,
+                     file-url:Url
+                 }:String
+    
+    let return-str:String = ""
+    
+    {if not {self.read-model?} then
+        {Utility.popup-msg {lmessage モデルファイルが読み込まれていません。}}
+        {return return-str}
+    }
+    
+    
+    || データの生成
+    let parser:SAXParser = {SAXParser}
+    let handler:LinkImageInfoHandler = {LinkImageInfoHandler}    
+    {parser.set-content-handler handler}
+    
+    || 情報ファイルの読み込み
+    {parser.parse
+        {InputSource character-stream = {read-open file-url}}
+    }
+    
+    || モデル切り替え機能対応のため、一旦、制御を戻した後に実行する
+    {after 0.01s do
+        
+        {for obj:LinkImageInfo key ii in self._maked-infos do
+            {if-non-null polygon = obj.polygon then
+                {graphic.scene.remove-object polygon}
+            }
+        }
+        {graphic.update-drawable}
+        {self._maked-infos.clear}
+        
+        {for obj:LinkImageInfoObject key ii in handler.link-image-infos do
+            || イメージURLはモデルからの相対URLなので、絶対URLに変換する
+            let image-path:String = obj.image
+            {if-non-null model-url = self._model-url then
+                let image-url:Url = {model-url.merge image-path}
+                set image-path = image-url.name
+            }
+            let lii-poly:LinkImageInfo = {LinkImageInfo
+                                             obj.title,
+                                             obj.face,
+                                             obj.xx, obj.yy,
+                                             obj.ww, obj.hh,
+                                             obj.offset,
+                                             image-path,
+                                             obj.jump,
+                                             obj.info}
+            {self.add-info graphic, lii-poly}
+        }
+        
+    }
+    
+    set return-str = file-url.filename
+    {return return-str}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose リンク情報ファイル書き込み                                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     リンク情報ファイル選択を行い、書き込みを行う。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        書き込んだURL名
+    }
+  }
+  |######################################################################################|
+  {method public {write-info}:String
+    
+    let return-str:String = ""
+    
+    {if self._maked-infos.empty? then
+        {Utility.popup-msg {lmessage リンク情報がありませんので、書き込みは行いません。}}
+        {return return-str}
+    }
+    
+    let filters:{Array-of FileDialogFilter} = {new {Array-of FileDialogFilter},
+                                                  {FileDialogFilter
+                                                      "Info file",
+                                                      {new
+                                                          {Array-of FileDialogTypeFilter},
+                                                          {FileDialogTypeFilter "inf"}
+                                                      }
+                                                  }
+                                              }
+    let file-url:#Url = {choose-file
+                            style = FileDialogStyle.save-as,
+                            filters = filters,
+                            title = {lmessage リンク情報ファイル書き込み}}
+    {if-non-null file-url = file-url then
+        let out:TextOutputStream = {write-open file-url, character-encoding = CharEncoding.utf8}
+        {out.write-one-string "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"}
+        {out.write-one-string "<LinkImageInfoDoc>\n"}
+        {out.write-one-string "  <Document>\n"}
+        {for info:LinkImageInfo key ii in self._maked-infos do
+            {out.write-one-string "    <LinkImageInfo>\n"}
+            {out.write-one-string "      <id>"     & info.id     & "</id>\n"}
+            {out.write-one-string "      <title>"  & {Utility.escape-xml-string info.title}  & "</title>\n"}
+            {out.write-one-string "      <face>"   & info.face   & "</face>\n"}
+            {out.write-one-string "      <xx>"     & info.xx     & "</xx>\n"}
+            {out.write-one-string "      <yy>"     & info.yy     & "</yy>\n"}
+            {out.write-one-string "      <ww>"     & info.ww     & "</ww>\n"}
+            {out.write-one-string "      <hh>"     & info.hh     & "</hh>\n"}
+            {out.write-one-string "      <offset>" & info.offset & "</offset>\n"}
+            || イメージURLはモデルから相対URLに変換する
+            {if-non-null model-url = self._model-url then
+                {out.write-one-string "      <image>"  & {{url info.image}.name-relative-to-url {url model-url.parent-dir-name}}  & "</image>\n"}
+            }
+            {out.write-one-string "      <jump>"   & {Utility.escape-xml-string info.jump}   & "</jump>\n"}
+            {out.write-one-string "      <info>"   & {Utility.escape-xml-string info.info}   & "</info>\n"}
+            {out.write-one-string "    </LinkImageInfo>\n"}
+        }
+        {out.write-one-string "  </Document>\n"}
+        {out.write-one-string "</LinkImageInfoDoc>\n"}
+        {out.close}
+    }
+    
+    set return-str = file-url.filename
+    {return return-str}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 操作履歴情報ファイル読み込み                                }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     操作履歴情報ファイル選択を行い、読み込みを行う。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter graphic, SceneGraphic                                     }
+    {return-vals
+        読み込んだURL名
+    }
+  }
+  |######################################################################################|
+  {method public {read-opetrace
+                     graphic:CustomSceneGraphic}:String
+    
+    let return-str:String = ""
+    
+    {if not {self.read-model?} then
+        {Utility.popup-msg {lmessage モデルファイルが読み込まれていません。}}
+        {return return-str}
+    }
+    
+    let filters:{Array-of FileDialogFilter} = {new {Array-of FileDialogFilter},
+                                                  {FileDialogFilter
+                                                      "OpeTrace file",
+                                                      {new
+                                                          {Array-of FileDialogTypeFilter},
+                                                          {FileDialogTypeFilter "ope"}
+                                                      }
+                                                  }
+                                              }
+    
+    let file-url:#Url = {choose-file
+                            style = FileDialogStyle.read,
+                            filters = filters,
+                            title = {lmessage 操作履歴情報ファイル読み込み}}
+    {if-non-null file-url = file-url then
+        set return-str = {self.read-opetrace-from-file graphic, file-url}
+    }
+    
+    {return return-str}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 操作履歴情報ファイル読み込み                                }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     操作履歴情報ファイルを指定し、読み込みを行う。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter graphic, SceneGraphic                                     }
+    {parameter file-url, 操作履歴情報ファイルURL                         }
+    {return-vals
+        読み込んだURL名
+    }
+  }
+  |######################################################################################|
+  {method public {read-opetrace-from-file
+                     graphic:CustomSceneGraphic,
+                     file-url:Url
+                 }:String
+    
+    let return-str:String = ""
+    
+    {if not {self.read-model?} then
+        {Utility.popup-msg {lmessage モデルファイルが読み込まれていません。}}
+        {return return-str}
+    }
+    
+    
+    || データの生成
+    let parser:SAXParser = {SAXParser}
+    let handler:OpeTraceHandler = {OpeTraceHandler}    
+    {parser.set-content-handler handler}
+    
+    || 情報ファイルの読み込み
+    {parser.parse
+        {InputSource character-stream = {read-open file-url}}
+    }
+    
+    {self.clear-operation-history}
+    
+    {for obj:OpeTraceObject key ii in handler.ope-traces do
+        let ope-trace:OpeTrace = {OpeTrace
+                                     obj.interval,
+                                     obj.xx,
+                                     obj.yy,
+                                     obj.zz,
+                                     obj.azimuth,
+                                     obj.elevation,
+                                     obj.divide-count}
+        {self._opetrace-list.append ope-trace}
+    }
+    
+    set return-str = file-url.filename
+    {return return-str}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 操作履歴情報ファイル書き込み                                }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     操作履歴情報ファイル選択を行い、書き込みを行う。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        書き込んだURL名
+    }
+  }
+  |######################################################################################|
+  {method public {write-opetrace}:String
+    
+    let return-str:String = ""
+    
+    {if self._opetrace-list.empty? then
+        {Utility.popup-msg {lmessage 操作履歴がありませんので、書き込みは行いません。}}
+        {return return-str}
+    }
+    
+    let filters:{Array-of FileDialogFilter} = {new {Array-of FileDialogFilter},
+                                                  {FileDialogFilter
+                                                      "OpeTrace file",
+                                                      {new
+                                                          {Array-of FileDialogTypeFilter},
+                                                          {FileDialogTypeFilter "ope"}
+                                                      }
+                                                  }
+                                              }
+    let file-url:#Url = {choose-file
+                            style = FileDialogStyle.save-as,
+                            filters = filters,
+                            title = {lmessage 操作履歴情報ファイル書き込み}}
+    {if-non-null file-url = file-url then
+        let out:TextOutputStream = {write-open file-url, character-encoding = CharEncoding.utf8}
+        {out.write-one-string "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"}
+        {out.write-one-string "<OpeTraceDoc>\n"}
+        {out.write-one-string "  <Document>\n"}
+        {for ope:OpeTrace key ii in self._opetrace-list do
+            {out.write-one-string "    <OpeTrace>"}
+            {out.write-one-string ope.interval  / 1ms  & ","}
+            {out.write-one-string ope.xx        / 1mm  & ","}
+            {out.write-one-string ope.yy        / 1mm  & ","}
+            {out.write-one-string ope.zz        / 1mm  & ","}
+            {out.write-one-string ope.azimuth   / 1deg & ","}
+            {out.write-one-string ope.elevation / 1deg & ","}
+            {out.write-one-string {String ope.divide-count}}
+            {out.write-one-string "</OpeTrace>\n"}
+        }
+        {out.write-one-string "  </Document>\n"}
+        {out.write-one-string "</OpeTraceDoc>\n"}
+        {out.close}
+    }
+    
+    set return-str = file-url.filename
+    {return return-str}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 全体表示に切り替える                                        }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     全体表示に切り替えを行う。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter graphic, SceneGraphic                                     }
+    {parameter proc, 回復時実行関数                                      }
+  }
+  |######################################################################################|
+  {method public {start-total-indication
+                     graphic:CustomSceneGraphic,
+                     recovery-proc:{proc-type {}:bool}
+                 }:void
+    
+    let scene:CustomScene = graphic.scene asa CustomScene
+    
+    set self._total-indication-recovery-proc = recovery-proc
+    
+    || オブジェクト矩形取得
+    let (min-coord:Distance3d, max-coord:Distance3d) = {graphic.get-world-bounding-box}
+
+    || 上空座標算出
+    let len:Distance = {max {abs max-coord.x - min-coord.x} / 2.0, {abs max-coord.y - min-coord.y} / 2.0}
+    let sky-zz:Distance = (len / {sin {graphic.get-field-of-view} / 2.0}) * 0.9
+    let sky-pos:Distance3d = {Distance3d
+                                 min-coord.x + (max-coord.x - min-coord.x) / 2,
+                                 min-coord.y + (max-coord.y - min-coord.y) / 2,
+                                 sky-zz}
+
+    || カメラの遠クリップ面が小さい場合は、修正する
+    let (near:Distance, far:Distance) = {graphic.get-clipping}
+    {if far < sky-zz then
+        {graphic.set-clipping near, sky-zz + 10m}
+    }
+    
+    || 現在の位置情報、方位角、仰角
+    let (xx:Distance, yy:Distance, zz:Distance) = {graphic.get-eye-position}
+    let (azimuth:Angle, elevation:Angle)        = {graphic.get-angle-view}
+    {scene.set-fog false}
+    {graphic.move-eye-view-from-to
+        {Distance3d xx, yy, zz}, azimuth, elevation,
+        sky-pos, 0deg, -90deg,
+        200}
+    set self._view-total-indication? = true
+    
+
+    let clip-dlg:#Dialog
+    {if self._total-indication-use-near-dialog? then
+        || クリップ面調整ダイアログ
+        set clip-dlg = {Dialog
+                           {VBox
+                               {lmessage 移動先を指示してください。},
+                               color = ObjectManager.text-color,
+                               background = {manifest-url "image", "ControlPanel"},
+                               {Scrollbar
+                                   direction = Orientation.horizontal,
+                                   control-color = {manifest-url "image", "Button"},
+                                   color = ObjectManager.text-color,
+                                   height = 5mm,
+                                   width = 100mm,
+                                   min = (sky-zz - max-coord.z) / 1mm - 100,
+                                   max = (sky-zz - min-coord.z) / 1mm,
+                                   blocksize = (max-coord.z - min-coord.z) / 1mm / 10,
+                                   unitsize = (max-coord.z - min-coord.z) / 1mm / 20,
+                                   value = (sky-zz - max-coord.z) / 1mm - 100,
+                                   {on e:Adjustment at s:Scrollbar do
+                                       {log4c.trace "Near: "& e.value}
+                                       let camera:Camera = graphic.scene.camera
+                                       set camera.near-clipping-plane = e.value * 1mm
+                                       {graphic.update-drawable}
+                                   }
+                               }
+                           },
+                           || ×ボタンの無効化
+                           {on e:WindowClose do
+                               {e.consume}
+                           }
+                       }
+    }
+    
+    
+    || 全体表示切り替え終了時関数の登録
+    let exec-proc:{proc-type {}:bool} = {proc {}:bool
+                                            {if self._total-indication-use-near-dialog? then
+                                                || クリップ面調整ダイアログを表示
+                                                {if-non-null clip-dlg then
+                                                    {clip-dlg.show title = {lmessage クリップ面調整}, modal? = false}
+                                                }
+                                            }
+                                            {{get-the-applet}.set-status {lmessage 移動先を指示してください。}}
+                                            
+                                            || 全体表示を戻すイベントを登録
+                                            let eh:EventHandler =
+                                                {on e:PointerPress at obj:CustomSceneGraphic do
+                                                    {if self._view-total-indication? then
+                                                        let (min-poly:#CustomPolygonSet,
+                                                             min-dist:Distance,
+                                                             min-point:Distance3d) = {obj.get-select-polygon e.x, e.y}
+                                                        {if-non-null min-poly then
+                                                            || 全体表示でポリゴンがクリックされたとき
+                                                            {log4c.trace "    →  min-poly: " & min-poly & " ( " & min-poly.id & " )  min-dist: " & min-dist & "  min-point: " & min-point}
+                                                            {log4c.trace "  Click: " & min-poly.id}
+                                                            
+                                                            || ＸＹ平面と平行か？
+                                                            let base-zz:Distance
+                                                            let xy-plane:bool = true
+                                                            {for coord key kk in min-poly.vertices do
+                                                                {if kk == 0 then
+                                                                    set base-zz = coord.z
+                                                                 else
+                                                                    {if not {Utility.is-same-Distance? base-zz,coord.z} then
+                                                                        set xy-plane = false
+                                                                        {break}
+                                                                    }
+                                                                }
+                                                            }
+                                                            
+                                                            {if xy-plane then
+                                                                || ＸＹ平面と平行の場合
+                                                                let click-pos:Distance3d =  {Distance3d
+                                                                                                min-point.x,
+                                                                                                min-point.y,
+                                                                                                min-point.z + graphic.eye-height}
+                                                                
+                                                                || 現在の位置情報、方位角、仰角
+                                                                let (xx:Distance, yy:Distance, zz:Distance) = {graphic.get-eye-position}
+                                                                let (azimuth:Angle, elevation:Angle)        = {graphic.get-angle-view}
+                                                                
+                                                                {{get-the-applet}.set-status ""}
+                                                                {if self._total-indication-use-near-dialog? then
+                                                                    || クリップ情報を元に戻す
+                                                                    let camera:Camera = graphic.scene.camera
+                                                                    set camera.near-clipping-plane = near
+                                                                    || クリップ面調整ダイアログを消去
+                                                                    {if-non-null clip-dlg then
+                                                                        {clip-dlg.close Dialog.cancel}
+                                                                    }
+                                                                }
+                                                                
+                                                                || ダイアログを消すと以降の処理が行えないので、afterを使用
+                                                                {after 0s do
+                                                                    {graphic.remove-event-handler eh}
+                                                                    {graphic.move-eye-view-from-to
+                                                                        {Distance3d xx, yy, zz}, azimuth, elevation,
+                                                                        click-pos, 0deg, 0deg,
+                                                                        200}
+                                                                    
+                                                                    || 全体表示戻し処理終了時関数の登録
+                                                                    let exec-proc:{proc-type {}:bool} = {proc {}:bool
+                                                                                                            {if-non-null self._total-indication-recovery-proc then
+                                                                                                                {self._total-indication-recovery-proc}
+                                                                                                            }
+                                                                                                            {scene.set-fog true}
+                                                                                                            set self._view-total-indication? = false
+                                                                                                            {graphic.update-drawable}
+                                                                                                            {return true}
+                                                                                                        }
+                                                                    let ev:CustomSceneGraphicExecProcEvent = {CustomSceneGraphicExecProcEvent exec-proc}
+                                                                    {graphic.add-event ev, times = 1, max-check? = false}
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                    {e.consume}
+                                                }
+                                            {graphic.add-event-handler eh}
+                                            {return true}
+                                        }
+    let ev:CustomSceneGraphicExecProcEvent = {CustomSceneGraphicExecProcEvent exec-proc}
+    {graphic.add-event ev, times = 1, max-check? = false}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 操作履歴をクリアする                                        }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     操作履歴をクリアする。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {clear-operation-history}:void
+    {self._opetrace-list.clear}
+    set self._opetrace-pos = 0
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 操作履歴ダイアログを表示する                               }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     操作履歴ダイアログを表示する。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter graphic, SceneGraphic                                     }
+    {parameter proc, 回復時実行関数                                      }
+  }
+  |######################################################################################|
+  {method public {disp-operation-history-dialog
+                     graphic:CustomSceneGraphic,
+                     recovery-proc:{proc-type {}:bool}
+                 }:void
+    
+    set self._opetrace-recovery-proc = recovery-proc
+    
+    
+    || ------------------------------------------------------------
+    || 操作履歴ダイアログ
+    let ope-dlg:#Dialog
+    
+    || 操作履歴数
+    let ope-num-tf:TextDisplay = {TextDisplay
+                                     width = 15mm, halign = "right", value = {String self._opetrace-list.size},
+                                     control-content-background = {Background.from-Color {Color.from-string ObjectManager.text-background}},
+                                     color = ObjectManager.text-color}
+    || 時間間隔
+    let interval-tf:TextField = {TextField
+                                    width = 15mm, halign = "right", value = {String 1000},
+                                    control-content-background = {Background.from-Color {Color.from-string ObjectManager.text-background}},
+                                    color = ObjectManager.text-color}
+    || 分割数
+    let divide-tf:TextField = {TextField
+                                  width = 15mm, halign = "right", value = {String 100},
+                                  control-content-background = {Background.from-Color {Color.from-string ObjectManager.text-background}},
+                                  color = ObjectManager.text-color}
+    || 操作履歴登録
+    let add-btn:CommandButton = {CommandButton
+                                    width = {make-elastic},
+                                    label = {lmessage 操作履歴登録},
+                                    control-color = {manifest-url "image", "Button"},
+                                    color = ObjectManager.text-color,
+                                    {on Action do
+                                        {if interval-tf.value.size == 0 then
+                                            {Utility.popup-msg {lmessage 「時間間隔」の値が未入力です。}}
+                                            {return}
+                                        }
+                                        {if not {Utility.string-double? interval-tf.value} then
+                                            {Utility.popup-msg {lmessage 「時間間隔」の値が不正です。}}
+                                            {return}
+                                        }
+                                        {if divide-tf.value.size == 0 then
+                                            {Utility.popup-msg {lmessage 「分割数」の値が未入力です。}}
+                                            {return}
+                                        }
+                                        {if not {Utility.string-double? divide-tf.value} then
+                                            {Utility.popup-msg {lmessage 「分割数」の値が不正です。}}
+                                            {return}
+                                        }
+                                        || 現在の位置情報、方位角、仰角
+                                        let (xx:Distance, yy:Distance, zz:Distance) = {graphic.get-eye-position}
+                                        let (azimuth:Angle, elevation:Angle)        = {graphic.get-angle-view}
+                                        let ope-trace:OpeTrace = {OpeTrace
+                                                                     {interval-tf.value.to-double},
+                                                                     xx / 1mm,
+                                                                     yy / 1mm,
+                                                                     zz / 1mm,
+                                                                     azimuth   / 1deg,
+                                                                     elevation / 1deg,
+                                                                     {divide-tf.value.to-int}}
+                                        {self._opetrace-list.append ope-trace}
+                                        set ope-num-tf.value = {String self._opetrace-list.size}
+                                    }
+                                }
+    || 自動登録
+    let auto-btn:ToggleButton = {ToggleButton
+                                    width = {make-elastic},
+                                    label = {lmessage 自動登録},
+                                    control-color = {manifest-url "image", "Button"},
+                                    color = ObjectManager.text-color,
+                                    {on e:ValueFinished do
+                                        let before-time:DateTime = {DateTime} 
+                                        {if auto-btn.value then
+                                            set add-btn.control-color = {manifest-url "image", "ButtonNone"}
+                                            set add-btn.enabled? = false
+                                            {graphic.set-exec-event-proc
+                                                {proc {event:CustomSceneGraphicEvent}:bool
+                                                    let now-time:DateTime = {DateTime}
+                                                    let interval:Time = now-time - before-time
+                                                    let (xx:Distance, yy:Distance, zz:Distance) = {graphic.get-eye-position}
+                                                    let (azimuth:Angle, elevation:Angle)        = {graphic.get-angle-view}
+                                                    let ope-trace:OpeTrace = {OpeTrace
+                                                                                 interval / 1ms,
+                                                                                 xx / 1mm,
+                                                                                 yy / 1mm,
+                                                                                 zz / 1mm,
+                                                                                 azimuth   / 1deg,
+                                                                                 elevation / 1deg,
+                                                                                 0}
+                                                    {self._opetrace-list.append ope-trace}
+                                                    set ope-num-tf.value = {String self._opetrace-list.size}
+                                                    set before-time = now-time
+                                                    {return true}
+                                                }}
+                                         else
+                                            set add-btn.control-color = {manifest-url "image", "Button"}
+                                            set add-btn.enabled? = true
+                                            {graphic.unset-exec-event-proc}
+                                        }
+                                    }
+                                }
+    || 閉じる
+    let close-btn:CommandButton = {CommandButton
+                                      width = {make-elastic},
+                                      label = {lmessage 閉じる},
+                                      control-color = {manifest-url "image", "Button"},
+                                      color = ObjectManager.text-color,
+                                      {on Action do
+                                          {if-non-null ope-dlg then
+                                              {ope-dlg.close Dialog.cancel}
+                                              {if-non-null self._opetrace-recovery-proc then
+                                                  {self._opetrace-recovery-proc}
+                                              }
+                                          }
+                                      }
+                                  }
+    let table:Table = {Table
+                          columns = 2}
+    {table.add row = 0, column = 0, {lmessage 操作履歴数}}
+    {table.add row = 0, column = 1, ope-num-tf}
+    {table.add row = 1, column = 0, {Rule height = 1pt},    colspan = 2}
+    {table.add row = 2, column = 0, auto-btn,               colspan = 2}
+    {table.add row = 3, column = 0, {Rule height = 1pt},    colspan = 2}
+    {table.add row = 4, column = 0, add-btn,                colspan = 2}
+||--    {table.add row = 5, column = 0, {lmessage 時間間隔(ms)}}
+||--    {table.add row = 5, column = 1, interval-tf}
+    {table.add row = 6, column = 0, {lmessage 分割数}}
+    {table.add row = 6, column = 1, divide-tf}
+    {table.add row = 7, column = 0, {Rule height = 1pt},    colspan = 2}
+    {table.add row = 8, column = 0, close-btn,              colspan = 2}
+    
+    set ope-dlg = {Dialog
+                      color = ObjectManager.text-color,
+                      background = {manifest-url "image", "ControlPanel"},
+                      table,
+                      || ×ボタンの無効化
+                      {on e:WindowClose do
+                          {e.consume}
+                      }
+                  }
+    
+    || 操作履歴ダイアログを表示
+    {ope-dlg.show title = {lmessage 操作履歴}, modal? = false}
+    
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 操作履歴再生ダイアログを表示する                            }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     操作履歴再生ダイアログを表示する。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter graphic, SceneGraphic                                     }
+    {parameter proc, 回復時実行関数                                      }
+  }
+  |######################################################################################|
+  {method public {disp-operation-history-playing-dialog
+                     graphic:CustomSceneGraphic,
+                     recovery-proc:{proc-type {}:bool}
+                 }:void
+    
+    {if self._opetrace-list.empty? then
+        {recovery-proc}
+        {Utility.popup-msg {lmessage 操作履歴がありません。}}
+        {return}
+    }
+    
+    set self._opetrace-recovery-proc = recovery-proc
+
+    || ------------------------------------------------------------
+    || 操作中止ダイアログ
+    let ope-dlg:#Dialog
+    
+    
+    || 操作履歴実行数
+    let ope-num-tf:TextDisplay = {TextDisplay
+                                     width = 15mm, halign = "right", value = {String 1},
+                                     control-content-background = {Background.from-Color {Color.from-string ObjectManager.text-background}},
+                                     color = ObjectManager.text-color}
+    || 操作履歴最大数
+    let ope-max-tf:TextDisplay = {TextDisplay
+                                     width = 15mm, halign = "right", value = {String self._opetrace-list.size},
+                                     control-content-background = {Background.from-Color {Color.from-string ObjectManager.text-background}},
+                                     color = ObjectManager.text-color}
+    || 繰り返し再生？
+    let ope-repeat:CheckButton    = {CheckButton value = true, tab-index = 2,
+                                        label = {Label {lmessage 繰り返し再生}, color = ObjectManager.text-color},
+                                        control-content-background = {Background.from-Color {Color.from-string ObjectManager.text-background}},
+                                        {on ValueChanged at cb:CheckButton do
+                                            set self._opetrace-auto-repeat? = ope-repeat.value
+                                        }
+                                    }
+    
+    || 実行スクロールバー
+    let opetrace-sb:Scrollbar = {Scrollbar
+                                    direction = Orientation.horizontal,
+                                    control-color = {manifest-url "image", "Button"},
+                                    tab-index = 3,
+                                    color = ObjectManager.text-color,
+                                    height = 5mm,
+                                    width = {make-elastic},
+                                    min = 1,
+                                    max = self._opetrace-list.size,
+                                    blocksize = 10,
+                                    unitsize = 1,
+                                    value = 1,
+                                    {on e:Adjustment at s:Scrollbar do
+                                        set self._opetrace-pos = (e.value asa int) - 1
+                                        set ope-num-tf.value = {String (self._opetrace-pos + 1)}
+                                        let ope:OpeTrace = self._opetrace-list[self._opetrace-pos]
+                                        {graphic.set-eye-position ope.xx, ope.yy, ope.zz}
+                                        {graphic.set-angle-view ope.azimuth, ope.elevation}
+                                        {graphic.set-camera}
+                                        {graphic.update-drawable}
+                                    }
+                                }
+    
+    || 実行
+    let opetrace-btn:ToggleButton = {ToggleButton
+                                        label = {lmessage 実行},
+                                        width = {make-elastic},
+                                        tab-index = 1,
+                                        control-color = {manifest-url "image", "Button"},
+                                        color = ObjectManager.text-color,
+                                        {on ValueFinished do
+                                            {if opetrace-btn.value then
+                                                set opetrace-btn.label = {lmessage 中断}
+                                                set self._opetrace-auto-repeat? = ope-repeat.value
+                                                set self._opetrace-timer.interval = 100ms
+                                                set self._opetrace-timer.repeat = 1
+                                                {self._opetrace-timer.enable}
+                                             else
+                                                set opetrace-btn.label = {lmessage 実行}
+                                                {self._opetrace-timer.disable}
+                                            }
+                                        }
+                                    }
+    
+    || 操作履歴再生関数
+    set self._opetrace-timer-proc =  {proc {}:bool
+                                         {if self._opetrace-list.empty? then
+                                             {self._opetrace-timer.disable}
+                                          else
+                                             || 画面更新
+                                             {opetrace-sb.set-scroll-value (self._opetrace-pos + 1)}
+                                             set ope-num-tf.value = {String (self._opetrace-pos + 1)}
+                                             let ope:OpeTrace = self._opetrace-list[self._opetrace-pos]
+                                             {graphic.set-eye-position ope.xx, ope.yy, ope.zz}
+                                             {graphic.set-angle-view ope.azimuth, ope.elevation}
+                                             {graphic.set-camera}
+                                             {graphic.update-drawable}
+
+                                             || 次へ
+                                             {inc self._opetrace-pos}
+                                             {if self._opetrace-list.size <= self._opetrace-pos then
+                                                 || 繰り返しのため、巻き戻し
+                                                 set self._opetrace-pos = 0
+                                                 {if not self._opetrace-auto-repeat? then
+                                                     set opetrace-btn.value = false
+                                                     set opetrace-btn.label = {lmessage 実行}
+                                                     {opetrace-sb.set-scroll-value (self._opetrace-pos + 1)}
+                                                     set ope-num-tf.value = {String (self._opetrace-pos + 1)}
+                                                     {self._opetrace-timer.disable}
+                                                     {return true}
+                                                 }
+                                             }
+
+                                             || 次の待ち時間設定
+                                             let next-ope:OpeTrace = self._opetrace-list[self._opetrace-pos]
+                                             {if next-ope.interval < 1ms then
+                                                 set next-ope.interval = 1ms
+                                             }
+                                             {if next-ope.divide-count > 0 then
+                                                 {graphic.move-eye-view-from-to
+                                                     {Distance3d ope.xx, ope.yy, ope.zz}, ope.azimuth, ope.elevation,
+                                                     {Distance3d next-ope.xx, next-ope.yy, next-ope.zz}, next-ope.azimuth, next-ope.elevation,
+                                                     next-ope.divide-count}
+                                                 || 終了時関数の登録
+                                                 let ev:CustomSceneGraphicExecProcEvent = {CustomSceneGraphicExecProcEvent
+                                                                                              {non-null self._opetrace-timer-proc}}
+                                                 {graphic.add-event ev, times = 1, max-check? = false}
+                                              else
+                                                 set self._opetrace-timer.interval = next-ope.interval
+                                                 set self._opetrace-timer.repeat = 1
+                                             }
+                                         }
+                                         {return true}
+                                     }
+    
+    || 閉じる
+    let close-btn:CommandButton = {CommandButton
+                                      width = {make-elastic},
+                                      tab-index = 4,
+                                      label = {lmessage 閉じる},
+                                      control-color = {manifest-url "image", "Button"},
+                                      color = ObjectManager.text-color,
+                                      {on Action do
+                                          {if-non-null ope-dlg then
+                                              {ope-dlg.close Dialog.cancel}
+                                              set self._opetrace-auto-repeat? = true
+                                              {if-non-null self._opetrace-recovery-proc then
+                                                  {self._opetrace-recovery-proc}
+                                                  set self._opetrace-recovery-proc = null
+                                              }
+                                              set self._opetrace-timer-proc =  {proc {}:bool
+                                                                                   {return false}
+                                                                               }
+                                              {self._opetrace-timer.disable}
+                                          }
+                                      }
+                                  }
+    let table:Table = {Table
+                          columns = 4}
+    {table.add row = 0, column = 0, opetrace-btn}
+    {table.add row = 0, column = 1, ope-repeat,             colspan = 3}
+    {table.add row = 1, column = 0, {lmessage 実行状況}}
+    {table.add row = 1, column = 1, ope-num-tf}
+    {table.add row = 1, column = 2, {lmessage /}}
+    {table.add row = 1, column = 3, ope-max-tf}
+    {table.add row = 2, column = 0, opetrace-sb,            colspan = 4}
+    {table.add row = 3, column = 0, {Rule height = 1pt},    colspan = 4}
+    {table.add row = 4, column = 0, close-btn,              colspan = 4}
+    
+    set ope-dlg = {Dialog
+                      color = ObjectManager.text-color,
+                      background = {manifest-url "image", "ControlPanel"},
+                      table,
+                      || ×ボタンの無効化
+                      {on e:WindowClose do
+                          {e.consume}
+                      }
+                  }
+    
+    set self._opetrace-pos = 0
+    
+    || 操作履歴再生ダイアログを表示
+    {ope-dlg.show title = {lmessage 操作履歴再生}}
+
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 操作履歴を再生する                                          }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     操作履歴を再生する。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter graphic, SceneGraphic                                     }
+    {return-vals
+        処理フラグ （true: 正常、false: 異常）
+    }
+  }
+  |######################################################################################|
+  {method public {play-operation-history
+                     graphic:CustomSceneGraphic
+                 }:bool
+    
+    {if self._opetrace-list.empty? then
+        {Utility.popup-msg {lmessage 操作履歴がありません。}}
+        {return false}
+    }
+
+    {graphic.camera-motion-none}
+    
+    || 操作履歴再生関数
+    set self._opetrace-timer-proc =  {proc {}:bool
+                                         {if self._opetrace-list.empty? then
+                                             {self._opetrace-timer.disable}
+                                          else
+                                             || 画面更新
+                                             let ope:OpeTrace = self._opetrace-list[self._opetrace-pos]
+                                             {graphic.set-eye-position ope.xx, ope.yy, ope.zz}
+                                             {graphic.set-angle-view ope.azimuth, ope.elevation}
+                                             {graphic.set-camera}
+                                             {graphic.update-drawable}
+                                             
+                                             || 次へ
+                                             {inc self._opetrace-pos}
+                                             {if self._opetrace-list.size <= self._opetrace-pos then
+                                                 || 繰り返しのため、巻き戻し
+                                                 set self._opetrace-pos = 0
+                                             }
+
+                                             || 次の待ち時間設定
+                                             let next-ope:OpeTrace = self._opetrace-list[self._opetrace-pos]
+                                             {if next-ope.interval < 1ms then
+                                                 set next-ope.interval = 1ms
+                                             }
+                                             {if next-ope.divide-count > 0 then
+                                                 {graphic.move-eye-view-from-to
+                                                     {Distance3d ope.xx, ope.yy, ope.zz}, ope.azimuth, ope.elevation,
+                                                     {Distance3d next-ope.xx, next-ope.yy, next-ope.zz}, next-ope.azimuth, next-ope.elevation,
+                                                     next-ope.divide-count}
+                                                 || 終了時関数の登録
+                                                 let ev:CustomSceneGraphicExecProcEvent = {CustomSceneGraphicExecProcEvent
+                                                                                              {non-null self._opetrace-timer-proc}}
+                                                 {graphic.add-event ev, times = 1, max-check? = false}
+                                              else
+                                                 set self._opetrace-timer.interval = next-ope.interval
+                                                 set self._opetrace-timer.repeat = 1
+                                             }
+                                         }
+                                         {return true}
+                                     }
+    
+    {after 0s do
+        set self._opetrace-timer.interval = 100ms
+        set self._opetrace-timer.repeat = 1
+        {self._opetrace-timer.enable}
+    }
+
+    {return true}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 操作履歴再生を中断する                                      }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     操作履歴再生を中断する。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter graphic, SceneGraphic                                     }
+    {return-vals
+        処理フラグ （true: 正常、false: 異常）
+    }
+  }
+  |######################################################################################|
+  {method public {stop-operation-history
+                     graphic:CustomSceneGraphic
+                 }:bool
+    
+    {if self._opetrace-list.empty? then
+        {return false}
+    }
+    
+    || 操作履歴再生関数
+    {self._opetrace-timer.disable}
+    set self._opetrace-timer-proc =  {proc {}:bool
+                                         {return false}
+                                     }
+    {graphic.camera-motion-ok}
+    {return true}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 操作履歴数を取得する                                        }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     操作履歴数を取得する。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        操作履歴数
+    }
+  }
+  |######################################################################################|
+  {method public {get-operation-history-count}:int
+    {return self._opetrace-list.size}
+  }
+  
+  
+}

@@ -1,0 +1,554 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  交点のシーン イベント                                                    }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     交点取得のためシーン イベント         }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class RayEvent {inherits RayIntersectionSceneEvent}
+  {constructor {default ...}
+    {construct-super
+        {splice ...}}
+  }
+}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  リンク情報編集ダイアログ                                                 }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     リンク情報の作成、編集を行います。    }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public LinkInfoEditDialog {inherits Dialog}
+  
+  |###|{doc-next {purpose SceneGraphic}}|###|
+  field private graphic         :CustomSceneGraphic
+  
+  |###|{doc-next {purpose 編集対象リンク情報}
+         {notes
+             既存のリンク情報が選択された際に、その情報を保持します。
+         }
+       }
+  |###|
+  field private lii-poly        :#LinkImageInfo
+  
+
+  |######################################################################################|
+  {doc-next 
+    {purpose リンク情報編集ダイアログのコンストラクタ                    }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     画面レイアウトを作成する。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter graphic, SceneGraphic                                     }
+    {parameter info, 編集対象のリンク情報                                }
+  }
+  |######################################################################################|
+  {constructor public {default
+                          graphic:CustomSceneGraphic,
+                          info:#LinkImageInfo = null,
+                          ...}
+    
+    set self.graphic = graphic
+    set self.lii-poly = info
+    
+    {construct-super
+        {splice ...}}
+    
+    let frame:Frame = {Frame
+                          color = Contents.text-color,
+                          background = {manifest-url "image", "ControlPanel"}
+                      }
+    {self.add frame}
+
+    let title-tf:TextField      = {TextField width = 40mm, halign = "left",  value = "",
+                                      control-content-background = {Background.from-Color {Color.from-string Contents.text-background}}}
+    let face-tf:TextField       = {TextField width = 20mm, halign = "right", value = "", editable? = false, takes-focus? = false,
+                                      control-content-background = {Background.from-Color {Color.from-string Contents.text-background}}}
+    let xx-tf:TextField         = {TextField width = 20mm, halign = "right", value = "",
+                                      control-content-background = {Background.from-Color {Color.from-string Contents.text-background}}}
+    let yy-tf:TextField         = {TextField width = 20mm, halign = "right", value = "",
+                                      control-content-background = {Background.from-Color {Color.from-string Contents.text-background}}}
+    let ww-tf:TextField         = {TextField width = 20mm, halign = "right", value = "",
+                                      control-content-background = {Background.from-Color {Color.from-string Contents.text-background}}}
+    let hh-tf:TextField         = {TextField width = 20mm, halign = "right", value = "",
+                                      control-content-background = {Background.from-Color {Color.from-string Contents.text-background}}}
+    let offset-tf:TextField     = {TextField width = 20mm, halign = "right", value = "",
+                                      control-content-background = {Background.from-Color {Color.from-string Contents.text-background}}}
+    let image-tf:TextField      = {TextField               halign = "left",  value = "", editable? = false, takes-focus? = false,
+                                      control-content-background = {Background.from-Color {Color.from-string Contents.text-background}}}
+    let url-tf:TextField        = {TextField               halign = "left",  value = "",
+                                      control-content-background = {Background.from-Color {Color.from-string Contents.text-background}}}
+    let info-ta:TextArea        = {TextArea  height = 50mm,                  value = "",
+                                      control-color = Contents.text-background,
+                                      control-content-background = {Background.from-Color {Color.from-string Contents.text-background}}}
+    
+    let face-btn:CommandButton  = {CommandButton
+                                      label = {lmessage 配置面指示},
+                                      control-color = {manifest-url "image", "Button"},
+                                      color = Contents.text-color,
+                                      {on Action do
+                                          let eh:EventHandler =
+                                              {on e:PointerPress at obj:CustomSceneGraphic do
+                                                  let (min-poly:#CustomPolygonSet,
+                                                       min-dist:Distance,
+                                                       min-point:Distance3d) = {obj.get-select-polygon e.x, e.y}
+                                                  {if-non-null min-poly then
+||--                                                      {log4c.trace "    →  min-poly: " & min-poly & " ( " & min-poly.id & " )  min-dist: " & min-dist & "  min-point: " & min-point}
+                                                      {log4c.trace "  Click: " & min-poly.id}
+                                                      {if min-poly.type == CustomPolygonSetType.link-image-info then
+                                                          set self.lii-poly = {{ObjectManager.get-singleton}.get-info min-poly.id}
+                                                          {if-non-null lii-poly = self.lii-poly then
+                                                              set title-tf.value        = {String lii-poly.title}
+                                                              set face-tf.value         = {String lii-poly.face}
+                                                              set xx-tf.value           = {String lii-poly.xx}
+                                                              set yy-tf.value           = {String lii-poly.yy}
+                                                              set ww-tf.value           = {String lii-poly.ww}
+                                                              set hh-tf.value           = {String lii-poly.hh}
+                                                              set offset-tf.value       = {String lii-poly.offset}
+                                                              set image-tf.value        = {String lii-poly.image}
+                                                              set url-tf.value          = {String lii-poly.jump}
+                                                              set info-ta.value         = {String lii-poly.info}
+                                                          }
+                                                       else
+                                                          set self.lii-poly = null
+                                                          set face-tf.value = {String min-poly.id}
+                                                          let elem:#ModelElement = {{ObjectManager.get-singleton}.get-element {face-tf.value.to-int}}
+                                                          {if-non-null elem then
+                                                              {if elem isa ThreeDFaceElement then
+                                                                  let face-elem:ThreeDFaceElement = elem asa ThreeDFaceElement
+                                                                  let (px:double, py:double, ok?:bool) = {face-elem.get-projection-coord
+                                                                                                             min-point.x / 1mm, min-point.y / 1mm, min-point.z / 1mm}
+                                                                  {if ok? then
+                                                                      set xx-tf.value = {String px}
+                                                                      set yy-tf.value = {String py}
+                                                                  }
+                                                              }
+                                                          }
+                                                      }
+                                                      {self.graphic.remove-event-handler eh}
+                                                      {{get-the-applet}.set-status ""}
+                                                      {self.show}
+                                                   else
+||--                                                      {log4c.trace "    →  min-poly: " & min-poly & "  min-dist: " & min-dist & "  min-point: " & min-point}
+                                                  }
+                                                  {e.consume}
+                                              }
+                                          {self.graphic.add-event-handler eh}
+                                          {{get-the-applet}.set-status {lmessage 配置面を指示してください。}}
+                                          {self.close "ID"}
+                                      }
+                                  }
+    let xy-btn:CommandButton  = {CommandButton
+                                    label = {lmessage 左下座標指示},
+                                    control-color = {manifest-url "image", "Button"},
+                                    color = Contents.text-color,
+                                    {on Action do
+                                        {if face-tf.value.size > 0 then
+                                            let eh:EventHandler =
+                                                {on e:PointerPress at obj:CustomSceneGraphic do
+                                                    let (min-poly:#CustomPolygonSet,
+                                                         min-dist:Distance,
+                                                         min-point:Distance3d) = {obj.get-select-polygon e.x, e.y, id = {face-tf.value.to-int}}
+                                                    {if-non-null min-poly then
+                                                        {log4c.trace "  Click: " & min-poly.id}
+                                                        {if {face-tf.value.to-int} == min-poly.id then
+                                                            let elem:#ModelElement = {{ObjectManager.get-singleton}.get-element {face-tf.value.to-int}}
+                                                            {if-non-null elem then
+                                                                {if elem isa ThreeDFaceElement then
+                                                                    let face-elem:ThreeDFaceElement = elem asa ThreeDFaceElement
+                                                                    let (px:double, py:double, ok?:bool) = {face-elem.get-projection-coord
+                                                                                                               min-point.x / 1mm, min-point.y / 1mm, min-point.z / 1mm}
+                                                                    {if ok? then
+                                                                        set xx-tf.value = {String {Utility.round-double px, 0}}
+                                                                        set yy-tf.value = {String {Utility.round-double py, 0}}
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                        {self.graphic.remove-event-handler eh}
+                                                        {{get-the-applet}.set-status ""}
+                                                        {self.show}
+                                                     else
+                                                        {Utility.popup-msg
+                                                            title = {lmessage 左下座標指示},
+                                                            {lmessage 指示された面は配置面ではありませんでした。配置面上を指示してください。}}
+                                                    }
+                                                    {e.consume}
+                                                }
+                                            {self.graphic.add-event-handler eh}
+                                            {{get-the-applet}.set-status {lmessage 左下座標を指示してください。}}
+                                            {self.close "ID"}
+                                         else
+                                            {Utility.popup-msg
+                                                title = {lmessage 左下座標指示},
+                                                {lmessage 配置面が指示されていません。先に、配置面を指示してください。}}
+                                        }
+                                    }
+                                }
+    let wh-btn:CommandButton  = {CommandButton
+                                    label = {lmessage 右上座標指示},
+                                    control-color = {manifest-url "image", "Button"},
+                                    color = Contents.text-color,
+                                    {on Action do
+                                        {if face-tf.value.size > 0 and
+                                            xx-tf.value.size > 0 and {Utility.string-double? xx-tf.value} and
+                                            yy-tf.value.size > 0 and {Utility.string-double? yy-tf.value} then
+                                            let eh:EventHandler =
+                                                {on e:PointerPress at obj:CustomSceneGraphic do
+                                                    let (min-poly:#CustomPolygonSet,
+                                                         min-dist:Distance,
+                                                         min-point:Distance3d) = {obj.get-select-polygon e.x, e.y, id = {face-tf.value.to-int}}
+                                                    {if-non-null min-poly then
+                                                        {log4c.trace "  Click: " & min-poly.id}
+                                                        {if {face-tf.value.to-int} == min-poly.id then
+                                                            let elem:#ModelElement = {{ObjectManager.get-singleton}.get-element {face-tf.value.to-int}}
+                                                            {if-non-null elem then
+                                                                {if elem isa ThreeDFaceElement then
+                                                                    let face-elem:ThreeDFaceElement = elem asa ThreeDFaceElement
+                                                                    let (px:double, py:double, ok?:bool) = {face-elem.get-projection-coord
+                                                                                                               min-point.x / 1mm, min-point.y / 1mm, min-point.z / 1mm}
+                                                                    {if ok? then
+                                                                        set ww-tf.value = {String {Utility.round-double (px - {xx-tf.value.to-double}), 0}}
+                                                                        set hh-tf.value = {String {Utility.round-double (py - {yy-tf.value.to-double}), 0}}
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                        {self.graphic.remove-event-handler eh}
+                                                        {{get-the-applet}.set-status ""}
+                                                        {self.show}
+                                                     else
+                                                        {Utility.popup-msg
+                                                            title = {lmessage 右上座標指示},
+                                                            {lmessage 指示された面は配置面ではありませんでした。配置面上を指示してください。}}
+                                                    }
+                                                    {e.consume}
+                                                }
+                                            {self.graphic.add-event-handler eh}
+                                            {{get-the-applet}.set-status {lmessage 右上座標を指示してください。}}
+                                            {self.close "ID"}
+                                         else
+                                            {Utility.popup-msg
+                                                title = {lmessage 右上座標指示},
+                                                {lmessage 配置面、Ｘ、Ｙが指示されていません。先に、配置面、Ｘ、Ｙを指示してください。}}
+                                        }
+                                    }
+                                }
+    let image-btn:CommandButton = {CommandButton
+                                      label = {lmessage …},
+                                      control-color = {manifest-url "image", "Button"},
+                                      color = Contents.text-color,
+                                      {on Action do
+                                          let filters:{Array-of FileDialogFilter} = {new
+                                                                                        {Array-of FileDialogFilter},
+                                                                                        {FileDialogFilter
+                                                                                            "JPEG file",
+                                                                                            {new
+                                                                                                {Array-of FileDialogTypeFilter},
+                                                                                                {FileDialogTypeFilter "jpg"},
+                                                                                                {FileDialogTypeFilter "jpeg"}
+                                                                                            }
+                                                                                        },
+                                                                                        {FileDialogFilter
+                                                                                            "GIF file",
+                                                                                            {new
+                                                                                                {Array-of FileDialogTypeFilter},
+                                                                                                {FileDialogTypeFilter "gif"}
+                                                                                            }
+                                                                                        },
+                                                                                        {FileDialogFilter
+                                                                                            "Bitmap file",
+                                                                                            {new
+                                                                                                {Array-of FileDialogTypeFilter},
+                                                                                                {FileDialogTypeFilter "bmp"}
+                                                                                            }
+                                                                                        },
+                                                                                        {FileDialogFilter
+                                                                                            "PNG file",
+                                                                                            {new
+                                                                                                {Array-of FileDialogTypeFilter},
+                                                                                                {FileDialogTypeFilter "png"}
+                                                                                            }
+                                                                                        }
+                                                                                    }
+
+                                          let return-str:String = ""
+                                          let file-url:#Url = {choose-file
+                                                                  style = FileDialogStyle.read,
+                                                                  filters = filters,
+                                                                  title = {lmessage イメージファイル選択}}
+                                          {if-non-null file-url then
+                                              set image-tf.value = file-url.full-filename
+                                          }
+                                      }
+                                  }
+
+    {if-non-null info = info then
+        set title-tf.value        = {String info.title}
+        set face-tf.value         = {String info.face}
+        set xx-tf.value           = {String info.xx}
+        set yy-tf.value           = {String info.yy}
+        set ww-tf.value           = {String info.ww}
+        set hh-tf.value           = {String info.hh}
+        set offset-tf.value       = {String info.offset}
+        set image-tf.value        = {String info.image}
+        set url-tf.value          = {String info.jump}
+        set info-ta.value         = {String info.info}
+    }
+    
+    {frame.add
+        {VBox
+            margin = 5pt,
+            width = 160mm,
+            {HBox
+                {HBox width = 25mm, {lmessage タイトル　}}, {Fill width = 2mm}, title-tf, {Fill}},
+            {HBox
+                {HBox width = 25mm, {lmessage 配置面　　}}, {Fill width = 2mm}, face-tf, {Fill width = 2mm}, face-btn, {Fill}},
+            {HBox
+                {HBox width = 25mm, {lmessage Ｘ座標　　}}, {Fill width = 2mm}, xx-tf, {Fill width = 2mm}, {lmessage mm}, {Fill width = 12mm}, {lmessage 　　},
+                {HBox width = 25mm, {lmessage Ｙ座標　　}}, {Fill width = 2mm}, yy-tf, {Fill width = 2mm}, {lmessage mm}, {Fill width = 2mm}, xy-btn, {Fill}},
+            {HBox
+                {HBox width = 25mm, {lmessage 幅　　　　}}, {Fill width = 2mm}, ww-tf, {Fill width = 2mm}, {lmessage mm}, {Fill width = 12mm}, {lmessage 　　},
+                {HBox width = 25mm, {lmessage 高さ　　　}}, {Fill width = 2mm}, hh-tf, {Fill width = 2mm}, {lmessage mm}, {Fill width = 2mm}, wh-btn, {Fill}},
+            {HBox
+                {HBox width = 25mm, {lmessage オフセット}}, {Fill width = 2mm}, offset-tf, {Fill width = 2mm}, {lmessage mm}, {Fill}},
+            {HBox
+                {HBox width = 25mm, {lmessage イメージ　}}, {Fill width = 2mm}, image-tf, {Fill width = 2mm}, image-btn},
+            {HBox
+                {HBox width = 25mm, {lmessage ＵＲＬ　　}}, {Fill width = 2mm}, url-tf},
+            {HBox
+                {HBox width = 25mm, {lmessage コメント　}}, {Fill width = 2mm}, info-ta},
+            {Fill height = 2mm},
+            {hcenter
+                {HBox
+                    spacing = 5pt,
+                    {CommandButton
+                        width = 20mm,
+                        label = {lmessage 実行},
+                        control-color = {manifest-url "image", "Button"},
+                        color = Contents.text-color,
+                        {on Action do
+                            || '実行'ボタン押下時の処理
+                            
+                            || 入力内容のチェック
+                            {if title-tf.value.size == 0 then
+                                {Utility.popup-msg {lmessage 「タイトル」の値が未入力です。}}
+                                {return}
+                            }
+                            {if face-tf.value.size == 0 then
+                                {Utility.popup-msg {lmessage 「面」が指定されていません。}}
+                                {return}
+                            }
+                            {if xx-tf.value.size == 0 then
+                                {Utility.popup-msg {lmessage 「Ｘ座標」の値が未入力です。}}
+                                {return}
+                            }
+                            {if yy-tf.value.size == 0 then
+                                {Utility.popup-msg {lmessage 「Ｙ座標」の値が未入力です。}}
+                                {return}
+                            }
+                            {if ww-tf.value.size == 0 then
+                                {Utility.popup-msg {lmessage 「幅」の値が未入力です。}}
+                                {return}
+                            }
+                            {if hh-tf.value.size == 0 then
+                                {Utility.popup-msg {lmessage 「高さ」の値が未入力です。}}
+                                {return}
+                            }
+                            {if offset-tf.value.size == 0 then
+                                {Utility.popup-msg {lmessage 「オフセット」の値が未入力です。}}
+                                {return}
+                            }
+                            {if not {Utility.string-double? xx-tf.value} then
+                                {Utility.popup-msg {lmessage 「Ｘ座標」の値が不正です。}}
+                                {return}
+                            }
+                            {if not {Utility.string-double? yy-tf.value} then
+                                {Utility.popup-msg {lmessage 「Ｙ座標」の値が不正です。}}
+                                {return}
+                            }
+                            {if not {Utility.string-double? ww-tf.value} then
+                                {Utility.popup-msg {lmessage 「幅」の値が不正です。}}
+                                {return}
+                            }
+                            {if not {Utility.string-double? hh-tf.value} then
+                                {Utility.popup-msg {lmessage 「高さ」の値が不正です。}}
+                                {return}
+                            }
+                            {if not {Utility.string-double? offset-tf.value} then
+                                {Utility.popup-msg {lmessage 「オフセット」の値が不正です。}}
+                                {return}
+                            }
+                            {if image-tf.value.size == 0 then
+                                {Utility.popup-msg {lmessage 「イメージ」の値が未入力です。}}
+                                {return}
+                            }
+                            {if info-ta.value.size == 0 then
+                                {Utility.popup-msg {lmessage 「コメント」の値が未入力です。}}
+                                {return}
+                            }
+                            
+                            let title:String    = title-tf.value
+                            let face:int        = {face-tf.value.to-int}
+                            let xx:double       = {xx-tf.value.to-double}
+                            let yy:double       = {yy-tf.value.to-double}
+                            let ww:double       = {ww-tf.value.to-double}
+                            let hh:double       = {hh-tf.value.to-double}
+                            let offset:double   = {offset-tf.value.to-double}
+                            let image:String    = image-tf.value
+                            let jump:String     = url-tf.value
+                            let info:String     = info-ta.value
+||--                            {log4c.trace "  face: " & face}
+||--                            {log4c.trace "  xx: " & xx & "  yy: " & yy}
+||--                            {log4c.trace "  ww: " & ww & "  hh: " & hh}
+||--                            {log4c.trace "  offset: " & offset}
+||--                            {log4c.trace "  image: " & image}
+||--                            {log4c.trace "  url: " & jump}
+||--                            {log4c.trace "  info: " & info}
+
+                            {if ww < 100 then
+                                {Utility.popup-msg {lmessage 「幅」の値が不正です。１００以上を指定してください。}}
+                                {return}
+                            }
+                            {if hh < 100 then
+                                {Utility.popup-msg {lmessage 「高さ」の値が不正です。１００以上を指定してください。}}
+                                {return}
+                            }
+
+                            || 入力内容の反映
+                            let org-id:int = LinkImageInfo.get-new-id
+                            {if-non-null lii-poly = self.lii-poly then
+                                {{ObjectManager.get-singleton}.del-info graphic, lii-poly.id}
+                                set org-id = lii-poly.id
+                                set self.lii-poly = null
+                            }
+                            
+                            set self.lii-poly = {LinkImageInfo
+                                                    id = org-id,
+                                                    title,
+                                                    face,
+                                                    xx, yy,
+                                                    ww, hh,
+                                                    offset,
+                                                    image,
+                                                    jump,
+                                                    info}
+                            {if-non-null lii-poly = self.lii-poly then
+                                {{ObjectManager.get-singleton}.add-info graphic, lii-poly}
+                            }
+
+                            {self.close Dialog.ok}
+                        }
+                    },
+                    {CommandButton
+                        width = 20mm,
+                        label = {lmessage キャンセル},
+                        control-color = {manifest-url "image", "Button"},
+                        color = Contents.text-color,
+                        {on Action do
+                            || 'キャンセル'ボタン押下時の処理
+                            {self.close Dialog.cancel}
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    || リンク情報編集後に、リンク情報イベントを有効にする
+    let detach-eh:EventHandler =
+        {on e:DetachEvent at dlg:Dialog do
+            let result:#String = dlg.return-state
+            {switch result
+             case Dialog.ok, Dialog.cancel, null do
+                {after 0.1s do
+                    {{ObjectManager.get-singleton}.enable-info-event?}
+                }
+            }
+        }
+    {self.add-event-handler detach-eh}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose リンク情報編集ダイアログ表示                                }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ダイアログを表示する。                              }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter title, ウィンドウのタイトル                               }
+    {parameter modal?, モーダルか非モーダルか                            }
+    {parameter center?, オーナーの前で中央揃えするかどうか               }
+    {parameter owner, オーナー                                           }
+    {parameter style, ダイアログ・スタイル                               }
+    {parameter large-icon, 大きなアイコン・イメージ                      }
+    {parameter small-icon, 小さなアイコン・イメージ                      }
+  }
+  |######################################################################################|
+  {method public {show
+                     title:String = "",
+                     modal?:bool = true,
+                     center?:bool = true,
+                     owner:#View = null,
+                     style:DialogStyle = DialogStyle.standard,
+                     large-icon:#Pixmap = null,
+                     small-icon:#Pixmap = null
+                 }:void
+    
+    || リンク情報編集中は、リンク情報イベントを無効にする
+    {{ObjectManager.get-singleton}.disable-info-event?}
+    
+    {super.show
+        title = {lmessage リンク情報設定},
+        modal? = modal?,
+        center? = center?,
+        owner = owner,
+        style = style,
+        large-icon = large-icon,
+        small-icon = small-icon}
+  }
+  
+  
+}

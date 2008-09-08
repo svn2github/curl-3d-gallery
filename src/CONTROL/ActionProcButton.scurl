@@ -1,0 +1,114 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  アクションボタン                                                         }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ボタンを離した時に指定された処理を実行させるボタン
+                     処理が登録されていない場合は、非活性となります。
+                 }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public ActionProcButton {inherits CommandButton}
+  
+  |###|{doc-next {purpose 実行される処理}}|###|
+  field private _action-proc:#{proc-type {button:int}:void}
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose アクションボタンのコンストラクタ                            }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     初期処理を行う。                                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter action-proc, 実行される処理                               }
+  }
+  |######################################################################################|
+  {constructor public {default
+                          action-proc:#{proc-type {button:int}:void} = null,
+                          ...}
+    
+    set self._action-proc = action-proc
+    
+    {construct-super {splice ...}}
+    
+    {if self._action-proc == null then
+        set self.enabled? = false
+    }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 実行処理登録                                                }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     実行される処理を登録する。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter proc, 実行される処理                                      }
+  }
+  |######################################################################################|
+  {setter public {action-proc
+                     proc:#{proc-type {button:int}:void}
+                 }:void
+    
+    set self._action-proc = proc
+    
+    {if self._action-proc == null then
+        set self.enabled? = false
+     else
+        set self.enabled? = true
+    }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ボタンを離した時のイベント処理                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     登録された処理を実行します。                        }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter e, PointerReleaseイベント                                 }
+  }
+  |######################################################################################|
+  {method public {on-pointer-release
+                     e:PointerRelease
+                 }:void
+    {if not self.enabled? then  {return}}
+    {if-non-null self._action-proc then
+        {self._action-proc e.button}
+    }
+  }
+  
+  
+}

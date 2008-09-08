@@ -1,0 +1,182 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+
+|######################################################################################|
+{doc-next 
+    {purpose  各種ボタンラベル大きさ                      }
+    {details {itemize
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀}}}
+}
+|######################################################################################|
+{let arrow-label-size:Distance = .4cm}
+
+
+|######################################################################################|
+{doc-next 
+    {purpose  上向き三角のボタンラベル生成                }
+    {details {itemize
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀}}}
+    {return-vals
+        上向き三角のPolygonGraphic
+    }
+}
+|######################################################################################|
+{define-proc public {get-up-label}:PolygonGraphic
+    {return
+        {PolygonGraphic
+            height = arrow-label-size,
+            width  = arrow-label-size,
+            {Fraction2d 0.0, 0.0},
+            {Fraction2d 0.5, 1.0},    
+            {Fraction2d 1.0, 0.0}
+        }
+    }
+}
+
+
+|######################################################################################|
+{doc-next 
+    {purpose  下向き三角のボタンラベル生成                }
+    {details {itemize
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀}}}
+    {return-vals
+        下向き三角のPolygonGraphic
+    }
+}
+|######################################################################################|
+{define-proc public {get-down-label}:PolygonGraphic
+    {return
+        {PolygonGraphic
+            height = arrow-label-size,
+            width  = arrow-label-size,
+            {Fraction2d 0.0, 1.0},
+            {Fraction2d 0.5, 0.0},    
+            {Fraction2d 1.0, 1.0}
+        }
+    }
+}
+
+
+|######################################################################################|
+{doc-next 
+    {purpose  右向き三角のボタンラベル生成                }
+    {details {itemize
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀}}}
+    {return-vals
+        右向き三角のPolygonGraphic
+    }
+}
+|######################################################################################|
+{define-proc public {get-right-label}:PolygonGraphic
+    {return
+        {PolygonGraphic
+            height = arrow-label-size,
+            width  = arrow-label-size,
+            {Fraction2d 0.0, 0.0},
+            {Fraction2d 0.0, 1.0},    
+            {Fraction2d 1.0, 0.5}
+        }
+    }
+}
+
+
+|######################################################################################|
+{doc-next 
+    {purpose  左向き三角のボタンラベル生成                }
+    {details {itemize
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀}}}
+    {return-vals
+        左向き三角のPolygonGraphic
+    }
+}
+|######################################################################################|
+{define-proc public {get-left-label}:PolygonGraphic
+    {return
+        {PolygonGraphic
+            height = arrow-label-size,
+            width  = arrow-label-size,
+            {Fraction2d 1.0, 0.0},
+            {Fraction2d 1.0, 1.0},    
+            {Fraction2d 0.0, 0.5}
+        }
+    }
+}
+
+
+|######################################################################################|
+{doc-next 
+    {purpose  後ろ向きのボタンラベル生成                  }
+    {details {itemize
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀}}}
+    {return-vals
+        後ろ向きのPolygonGraphic
+    }
+}
+|######################################################################################|
+{define-proc public {get-back-label}:PolygonGraphic
+    {return
+        {PolygonGraphic
+            height = arrow-label-size,
+            width  = arrow-label-size,
+            {Fraction2d 0.0, 0.0},
+            {Fraction2d 0.2, 0.0},
+            {Fraction2d 0.5, 0.3},
+            {Fraction2d 0.8, 0.0},
+            {Fraction2d 1.0, 0.0},
+            {Fraction2d 1.0, 0.2},
+            {Fraction2d 0.7, 0.5},
+            {Fraction2d 1.0, 0.8},
+            {Fraction2d 1.0, 1.0},
+            {Fraction2d 0.8, 1.0},
+            {Fraction2d 0.5, 0.7},
+            {Fraction2d 0.2, 1.0},
+            {Fraction2d 0.0, 1.0},
+            {Fraction2d 0.0, 0.8},
+            {Fraction2d 0.3, 0.5},
+            {Fraction2d 0.0, 0.2},
+            {Fraction2d 0.0, 0.0}
+        }
+    }
+}
+
+
+|######################################################################################|
+{doc-next 
+    {purpose  四角のボタンラベル生成                      }
+    {details {itemize
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀}}}
+    {return-vals
+        四角のPolygonGraphic
+    }
+}
+|######################################################################################|
+{define-proc public {get-reset-label}:PolygonGraphic
+    {return
+        {PolygonGraphic
+            height = arrow-label-size,
+            width  = arrow-label-size,
+            {Fraction2d 0.4, 0.4},
+            {Fraction2d 0.6, 0.4},
+            {Fraction2d 0.6, 0.6},    
+            {Fraction2d 0.4, 0.6}
+        }
+    }
+}

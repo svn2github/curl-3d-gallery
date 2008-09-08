@@ -1,0 +1,2286 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+
+|| 交点計算パラメータ
+{define-enum LineIntersectStatus
+    extension-start-point,              || 交点あり　始点側延長上（虚交点）
+    on-start-point,                     || 交点あり　始点
+    on-line,                            || 交点あり　直線上（実交点）
+    on-end-point,                       || 交点あり　終点
+    extension-end-point,                || 交点あり　終点側延長上（虚交点）
+    parallel-line,                      || 交点なし　同一直線上でない平行線
+    same-line,                          || 交点なし　同一線
+    join-line,                          || 交点なし　同一直線で端点一致
+    double-line,                        || 交点なし　同一直線で重なりあり
+    separate-line,                      || 交点なし　同一直線上で分離している
+    none                                || その他
+}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  幾何計算                                                                 }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     幾何計算。
+                 }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public Geom
+  
+  |###|{doc-next {purpose 許容誤差}}|###|
+  def public eps:double = 0.00001
+  
+  |###|{doc-next {purpose ラジアン定数}}|###|
+  def radian:double = pi / 180.0
+  
+  |###|{doc-next {purpose 赤道半径}}|###|
+  def equator-radius:double = 6378137000
+  
+  
+  || ------------------------------------------------------------
+  || デバッグ情報
+  
+  || 緯度、経度をmm単位の値に変換する
+  def is-debug-conv-latitude-longitude?:bool = false
+  
+  || 単位ベクトルを求める
+  def is-debug-calc-unit-product?:bool = false
+  
+  || 単位ベクトルを求める（２点指定）
+  def is-debug-calc-unit-product-2pos?:bool = false
+  
+  || ベクトルの外積を求める
+  def is-debug-calc-outer-product?:bool = false
+  
+  || ベクトルの外積を求める（２次元）
+  def is-debug-calc-outer-product-2d?:bool = false
+  
+  || ベクトルの内積を求める
+  def is-debug-calc-inner-product?:bool = false
+  
+  || ２ベクトルの角度を求める
+  def is-debug-calc-angle-2-vec?:bool = false
+  
+  || ベクトルの角度を求める（２次元）
+  def is-debug-calc-angle-2d?:bool = false
+  
+  || 点座標列の回り方向を求める
+  def is-debug-is-pnts-ccw??:bool = false
+  
+  || 座標点列の正規化
+  def is-debug-normalization-coords?:bool = false
+  
+  || 座標点列の正規化（一直線上に並んでいる部分を間引く）
+  def is-debug-normalization-coords-liner?:bool = false
+  
+  || 座標点列の法線ベクトルを求める
+  def is-debug-calc-coords-normal?:bool = false
+  
+  || 座標点列の法線ベクトルを求める（全点列で多いものを採用）
+  def is-debug-calc-coords-normal-sub?:bool = false
+  
+  || 座標点列を回転マトリックスで変換する
+  def is-debug-calc-rotate-coords?:bool = false
+  
+  || ポリゴンを三角形分割する
+  def is-debug-calc-triangulation-polygon?:bool = false
+  
+  || ポリゴンを三角形分割する
+  def is-debug-calc-triangulation-polygon-faces?:bool = false
+  
+  || 座標点列よりテクスチャ用の座標点比率を求める
+  def is-debug-calc-coords-texture-ratio?:bool = false
+  
+  || 座標点列より構成される部分平面との交点を求める
+  def is-debug-calc-coords-plane-intersection?:bool = false
+  
+  || ２直線の交点を求める
+  def is-debug-calc-intersect-line?:bool = false
+  
+  || 点と直線の距離を求める
+  def is-debug-calc-point-line-dist?:bool = false
+
+  || ２点間の距離を求める
+  def is-debug-calc-point-point-dist?:bool = false
+  
+  || くり抜き形状を考慮して、一筆書きにする
+  def is-debug-normalization-inner-coords-sub?:bool = false
+  
+  || ------------------------------------------------------------
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 緯度、経度をmm単位の値に変換                                }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     緯度、経度をmm単位の値に変換します。                }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter base, 基準座標                                            }
+    {parameter point, 変換座標（経度、緯度、高さ）                       }
+    {return-vals
+        変換後の座標
+    }
+  }
+  |######################################################################################|
+  {define-proc public {conv-latitude-longitude
+                          base:Double3d,
+                          point:Double3d
+                      }:Double3d
+    
+    {if Geom.is-debug-conv-latitude-longitude? then
+        {log4c.trace "緯度、経度をmm値に変換" &
+            "  base: "  & {format "%0.8f", base.x}  & " , " & {format "%0.8f", base.y}  & " , " & {format "%0.8f", base.z} &
+            "  point: " & {format "%0.8f", point.x} & " , " & {format "%0.8f", point.y} & " , " & {format "%0.8f", point.z}}
+    }
+
+    || 経度はマイナスになるため、逆転させている
+    let lati:double  = base.x  - point.x
+    let longi:double = point.y - base.y
+    
+    let xx:double = Geom.equator-radius * lati * Geom.radian * {cos base.x * 1.0deg}
+    let yy:double = Geom.equator-radius * longi * Geom.radian
+    let zz:double = (point.z - base.z) * 1000.0
+    
+    {if Geom.is-debug-conv-latitude-longitude? then
+        {log4c.trace "  →  xx: " & {format "%0.8f", xx} & "  yy: " & {format "%0.8f", yy} & "  zz: " & {format "%0.8f", zz}}
+    }
+    
+    {return {Double3d xx, yy, zz}}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 単位ベクトルを求める                                        }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     単位ベクトルを求めます。                            }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter vec, ベクトル                                             }
+    {return-vals
+        単位ベクトル
+    }
+  }
+  |######################################################################################|
+  {define-proc public {calc-unit-product
+                          vec:Double3d
+                      }:Double3d
+    
+    {if Geom.is-debug-calc-unit-product? then
+        {log4c.trace "単位ベクトル  vec: " & vec}
+    }
+    
+    let ww:double = vec.x * vec.x + vec.y * vec.y + vec.z * vec.z
+    {if {abs ww} < Geom.eps then
+        {return {Double3d.zero}}
+    }
+    let ll:double = {sqrt ww}
+    let xx:double = vec.x / ll
+    let yy:double = vec.y / ll
+    let zz:double = vec.z / ll
+    
+    {if Geom.is-debug-calc-unit-product? then
+        {log4c.trace "  →  xx: " & xx & "  yy: " & yy & "  zz: " & zz}
+    }
+    
+    {return {Double3d xx, yy, zz}}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 単位ベクトルを求める（２点指定）                            }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ２点間ベクトルの単位ベクトルを求めます。            }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter pos-1, 座標１                                             }
+    {parameter pos-2, 座標２                                             }
+    {return-vals
+        単位ベクトル
+    }
+  }
+  |######################################################################################|
+  {define-proc public {calc-unit-product-2pos
+                          pos-1:Double3d,
+                          pos-2:Double3d
+                      }:Double3d
+    
+    {if Geom.is-debug-calc-unit-product-2pos? then
+        {log4c.trace "単位ベクトル（２点指定）  pos-1: " & pos-1 & "  pos-2: " & pos-2}
+    }
+    
+    let vec:Double3d = {Double3d
+                           pos-1.x - pos-2.x,
+                           pos-1.y - pos-2.y,
+                           pos-1.z - pos-2.z}
+    {return {Geom.calc-unit-product vec}}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ベクトルの外積を求める                                      }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ベクトルの外積を求めます。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter vec-a, ベクトル１                                         }
+    {parameter vec-b, ベクトル２                                         }
+    {return-vals
+        外積
+    }
+  }
+  |######################################################################################|
+  {define-proc public {calc-outer-product
+                          vec-a:Double3d,
+                          vec-b:Double3d
+                      }:Double3d
+
+    {if Geom.is-debug-calc-outer-product? then
+        {log4c.trace "ベクトルの外積  vec-a: " & vec-a & "  vec-b: " & vec-b}
+    }
+    
+    let xx:double = vec-a.y * vec-b.z - vec-a.z * vec-b.y
+    let yy:double = vec-a.z * vec-b.x - vec-a.x * vec-b.z
+    let zz:double = vec-a.x * vec-b.y - vec-a.y * vec-b.x
+    
+    {if Geom.is-debug-calc-outer-product? then
+        {log4c.trace "  →  xx: " & xx & "  yy: " & yy & "  zz: " & zz}
+    }
+    
+    {return {Geom.calc-unit-product {Double3d xx, yy, zz}}}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ベクトルの外積を求める（２次元）                            }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ２次元ベクトルの外積を求めます。                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter vec-a, ２次元ベクトル１                                   }
+    {parameter vec-b, ２次元ベクトル２                                   }
+    {return-vals
+        外積
+    }
+  }
+  |######################################################################################|
+  {define-proc public {calc-outer-product-2d
+                          vec-a:Double2d,
+                          vec-b:Double2d
+                      }:double
+    let vec_crp:double = (vec-a.x * vec-b.y) - (vec-a.y * vec-b.x)
+    {return vec_crp}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ベクトルの内積を求める                                      }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ベクトルの内積を求めます。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter vec-a, ベクトル１                                         }
+    {parameter vec-b, ベクトル２                                         }
+    {return-vals
+        内積
+    }
+  }
+  |######################################################################################|
+  {define-proc public {calc-inner-product
+                          vec-a:Double3d,
+                          vec-b:Double3d
+                      }:double
+    
+    {if Geom.is-debug-calc-inner-product? then
+        {log4c.trace "ベクトルの内積  vec-a: " & vec-a & "  vec-b: " & vec-b}
+    }
+    
+    let result:double = vec-a.x * vec-b.x + vec-a.y * vec-b.y + vec-a.z * vec-b.z
+    
+    {if Geom.is-debug-calc-inner-product? then
+        {log4c.trace "  →  result: " & result}
+    }
+    
+    {return result}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ２ベクトルの角度を求める                                    }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ２ベクトルの角度を求めます。                        }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter vec-a, ベクトル１                                         }
+    {parameter vec-b, ベクトル２                                         }
+    {return-vals
+        角度,
+        回転軸（法線ベクトル）,
+        処理フラグ （true: 正常、false: 異常）
+    }
+  }
+  |######################################################################################|
+  {define-proc public {calc-angle-2-vec
+                          vec-a:Double3d,
+                          vec-b:Double3d
+                      }:(double, Double3d, bool)
+
+    {if Geom.is-debug-calc-angle-2-vec? then
+        {log4c.trace "                                                                      "}
+        {log4c.trace "====< S:calc-angle-2-vec ２ベクトルの角度を求める >==================="}
+        {log4c.trace "  In Param  vec-a: " & vec-a & "  vec-b: " & vec-b}
+    }
+
+    let wk1:double = {Geom.calc-inner-product vec-a, vec-b}
+    let wk2:double = {Geom.calc-inner-product vec-a, vec-a} * {Geom.calc-inner-product vec-b, vec-b}
+    {if Geom.is-debug-calc-angle-2-vec? then
+        {log4c.trace "  wk1: " & wk1 & "  wk2: " & wk2}
+    }
+    
+    {if {abs wk2} < Geom.eps then
+        {if Geom.is-debug-calc-angle-2-vec? then
+            {log4c.trace "  NG → wk2 < 0.0"}
+            {log4c.trace "====< E:calc-angle-2-vec ２ベクトルの角度を求める >==================="}
+            {log4c.trace "                                                                      "}
+        }
+        {return 0.0, {Double3d.zero}, false}
+    }
+    
+    let ang:double = {acos wk1 / {sqrt wk2}} / 1.0deg
+    
+    let axis:Double3d = {Geom.calc-outer-product vec-a, vec-b}
+    {if {abs axis.magnitude - 1.0} > Geom.eps then
+        {if {Utility.is-same-double? ang, 180.0} or
+            {Utility.is-same-double? ang,   0.0} then
+            let axis:Double3d = {Double3d vec-b.z, vec-b.x, vec-b.y}
+            {if Geom.is-debug-calc-angle-2-vec? then
+                {log4c.trace "  OK → 回転軸: " & axis & "  ( 長さ: " & axis.magnitude & " )  回転角度: " & ang}
+                {log4c.trace "====< E:calc-angle-2-vec ２ベクトルの角度を求める >==================="}
+                {log4c.trace "                                                                      "}
+            }
+            {return ang, axis, true}
+        }
+        {if Geom.is-debug-calc-angle-2-vec? then
+            {log4c.trace "  NG → 回転軸が不適当: " & axis & "  " & axis.magnitude & "  " & ang}
+            {log4c.trace "====< E:calc-angle-2-vec ２ベクトルの角度を求める >==================="}
+            {log4c.trace "                                                                      "}
+        }
+        {return (ang, {Double3d.zero}, false)}
+    }
+    
+    {if Geom.is-debug-calc-angle-2-vec? then
+        {log4c.trace "  OK → 回転軸: " & axis & "  ( 長さ: " & axis.magnitude & " )  回転角度: " & ang}
+        {log4c.trace "====< E:calc-angle-2-vec ２ベクトルの角度を求める >==================="}
+        {log4c.trace "                                                                      "}
+    }
+    
+    {return ang, axis, true}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ２次元ベクトルの角度を求める                                }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ２次元ベクトルの角度を求めます。                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter xx, Ｘ座標                                                }
+    {parameter yy, Ｙ座標                                                }
+    {return-vals
+        角度,
+        処理フラグ （true: 正常、false: 異常）
+    }
+  }
+  |######################################################################################|
+  {define-proc public {calc-angle-2d
+                          xx:double,
+                          yy:double
+                      }:(Angle, bool)
+
+    {if {Utility.is-same-double? xx, 0.0} and
+        {Utility.is-same-double? yy, 0.0} then
+        {return (0deg, false)}
+    }
+    
+    let ss:Angle = {acos ( xx / {sqrt xx * xx + yy * yy})}
+    {if yy < 0.0 then
+        set ss = 360.0deg - ss
+    }
+    {if ss == 360.0deg then set ss = 0.0deg}
+    
+    {return (ss, true)}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ベクトルをＺ軸で回転させる                                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ベクトルをＺ軸で回転させます。                      }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter ang, 回転角度                                             }
+    {parameter vec, ベクトル                                             }
+    {return-vals
+        回転後のベクトル 
+    }
+  }
+  |######################################################################################|
+  {define-proc public {calc-rotate-vector
+                          ang:Angle,
+                          vec:Double3d
+                      }:Double3d
+    
+    let rot-vec:Double3d = {Double3d
+                               vec.x * {cos ang} - vec.y * {sin ang},
+                               vec.x * {sin ang} + vec.y * {cos ang},
+                               vec.z}
+    
+    {return {Geom.calc-unit-product rot-vec}}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 点座標列の回り方向を求める                                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     点座標列の回り方向を求めます。                      }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter pnts, 座標点列                                            }
+    {return-vals
+        反時計回りか？,
+        処理フラグ （true: 正常、false: 異常）
+    }
+    {notes
+        ポリゴンがねじれている場合は、正しく処理できません。
+        座標点列が３点未満の場合は、処理できません。
+    }
+  }
+  |######################################################################################|
+  {define-proc public {is-pnts-ccw?
+                          pnts:{Array-of Double3d}
+                      }:(bool, bool)
+
+    || ３点未満では求められない
+    {if (pnts.size < 3) then
+        {return (false, false)}
+    }
+    
+    let total_vec:double
+    let bx:double = pnts[0].x
+    let by:double = pnts[0].y
+    
+    {for ii = 1 below pnts.size do
+        let jj:int = (ii + 1) mod (pnts.size)
+        let bs-vec:double = {Geom.calc-outer-product-2d
+                                {Double2d pnts[ii].x - bx, pnts[ii].y - by},
+                                {Double2d pnts[jj].x - bx, pnts[jj].y - by}}
+        {inc total_vec, bs-vec}
+    }
+
+    {if (total_vec < 0.0) then
+        || 時計周り (CW)
+        {return (false, true)}
+     else
+        || 反時計周り (CCW)
+        {return (true, true)}
+    }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 座標点列の正規化                                            }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ・一直線上に並んでいる部分を間引きます。
+                     ・くり抜き形状を考慮して、一筆書きにします。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter outer-coords, 外形座標点列                                }
+    {parameter inner-coords-array, 内部座標点列の配列                    }
+    {return-vals
+        正規化後の座標点列
+    }
+    {notes
+        ２点以下では求められないので、そのまま返します。
+    }
+  }
+  |######################################################################################|
+  {define-proc public {normalization-coords
+                          outer-coords:{Array-of Double3d},
+                          inner-coords-array:{Array-of {Array-of Double3d}}
+                      }:({Array-of Double3d})
+
+    let result:{Array-of Double3d} = {new {Array-of Double3d}}
+    
+    || ２点以下では求められないので、そのまま返す
+    {if outer-coords.size <= 2 then
+        {return outer-coords}
+    }
+    
+    {if Geom.is-debug-normalization-coords? then
+        {log4c.trace "====< 座標点列の正規化前 >=============="}
+        {for pnt:Double3d key ii in outer-coords do
+            {log4c.trace "  [ " & ii & " ]: " & pnt}
+        }
+        {for pnts:{Array-of Double3d} key ii in inner-coords-array do
+            {for pnt:Double3d key jj in pnts do
+                {log4c.trace "  [ " & ii & " ][ " & jj & " ]: " & pnt}
+            }
+        }
+        {log4c.trace "========================================"}
+    }
+
+    || 直線上に並んでいる点を間引く
+    let wk-outer-coords:{Array-of Double3d} = {Geom.normalization-coords-liner outer-coords}
+    let wk-inner-coords-array:{Array-of {Array-of Double3d}} = {new {Array-of {Array-of Double3d}}}
+    {for pnts:{Array-of Double3d} key ii in inner-coords-array do
+        let wk-inner-coords:{Array-of Double3d} = {Geom.normalization-coords-liner pnts}
+        {wk-inner-coords-array.append wk-inner-coords}
+    }
+
+    || くり抜きがある場合、一筆書き化する
+    {if inner-coords-array.size > 0 then
+        {for wk-inner-coords:{Array-of Double3d} key ii in inner-coords-array do
+            let check-inner-coords-array:{Array-of {Array-of Double3d}} = {new {Array-of {Array-of Double3d}}}
+            {for jj:int = ii + 1 below inner-coords-array.size do
+                let wk-check-inner-coords:{Array-of Double3d} = {new {Array-of Double3d}}
+                {for coord:Double3d in inner-coords-array[jj] do
+                    {wk-check-inner-coords.append {Double3d coord.x, coord.y, coord.z}}
+                }
+                {check-inner-coords-array.append wk-check-inner-coords}
+            }
+            set wk-outer-coords = {Geom.normalization-inner-coords-sub
+                                      wk-outer-coords,
+                                      wk-inner-coords,
+                                      check-inner-coords-array}
+            {if Geom.is-debug-normalization-coords? then
+                {log4c.trace "くり抜き部分の正規化"}
+                {Utility.disp-array-double3d-for-gCAD3D wk-outer-coords}
+            }
+        }
+        {for coord:Double3d key ii in wk-outer-coords do
+            {result.append coord}
+        }
+     else
+        {for coord:Double3d key ii in wk-outer-coords do
+            {result.append coord}
+        }
+    }
+    
+    {if Geom.is-debug-normalization-coords? then
+        {log4c.trace "====< 座標点列の正規化後 >=============="}
+        {for ii:int = 0 below result.size do
+            {log4c.trace "  [ " & ii & " ]: " & result[ii]}
+        }
+        {Utility.disp-array-double3d-for-gCAD3D result}
+        {log4c.trace "========================================"}
+    }
+
+    {return result}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 座標点列の正規化                                            }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ・一直線上に並んでいる部分を間引きます。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter coords, 座標点列                                          }
+    {return-vals
+        正規化後の座標点列
+    }
+    {notes
+        ２点以下では求められないので、そのまま返します。
+    }
+  }
+  |######################################################################################|
+  {define-proc private {normalization-coords-liner
+                           coords:{Array-of Double3d}
+                       }:({Array-of Double3d})
+
+    let result:{Array-of Double3d} = {{Array-of Double3d}}
+    
+    || ２点以下では求められないので、そのまま返す
+    {if coords.size <= 2 then
+        {return coords}
+    }
+    
+    {if Geom.is-debug-normalization-coords-liner? then
+        {log4c.trace "====< 座標点列の正規化前 >=============="}
+        {for pnt:Double3d key ii in coords do
+            {log4c.trace "  [ " & ii & " ]: " & pnt}
+        }
+        {log4c.trace "========================================"}
+    }
+
+    {for ii:int = 0 below coords.size do
+        let pos1:int = (ii - 1 + coords.size)  mod coords.size
+        let pos2:int =  ii
+        let pos3:int = (ii + 1) mod coords.size
+
+        || なぜか、配列アクセス式'[]'にすると、呼び出し先で、<not-a-number>な値となってしまう
+        let vec-a:Double3d = {Geom.calc-unit-product-2pos {coords.get pos2}, {coords.get pos1}}
+        let vec-b:Double3d = {Geom.calc-unit-product-2pos {coords.get pos3}, {coords.get pos2}}
+        {if Geom.is-debug-normalization-coords-liner? then
+            {log4c.trace "点1 [" & pos1 & " ] : " & {coords.get pos1} & "  点2 [" & pos2 & " ] : " & {coords.get pos2} & "  点3 [" & pos3 & " ] : " & {coords.get pos3}}
+            {log4c.trace "ベクトルＡ: " & vec-a & "  ベクトルＢ: " & vec-b}
+        }
+
+        || ２ベクトルが同一でなければ、その中間点は有効
+        {if not {Utility.is-same-Double3d-low-precision? vec-a, vec-b} then
+            {result.append coords[pos2]}
+         else
+            {if Geom.is-debug-normalization-coords-liner? then
+                {log4c.trace "  →  直線上に並んでいたので、間引く"}
+            }
+        }
+    }
+    
+    {if Geom.is-debug-normalization-coords-liner? then
+        {log4c.trace "====< 座標点列の正規化後 >=============="}
+        {for ii:int = 0 below result.size do
+            {log4c.trace "  [ " & ii & " ]: " & result[ii]}
+        }
+        {log4c.trace "========================================"}
+    }
+    
+    {return result}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 座標点列の法線ベクトルを求める                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     座標点列の法線ベクトルを求めます。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter coords, 座標点列                                          }
+    {return-vals
+        法線ベクトル,
+        座標点列が凹形状の可能性（true：あり、false：なし）
+    }
+    {notes
+        処理手順は、以下の通りです。
+        　01: ３点未満の場合、法線ベクトルは、（(0,0,0)、true）で返す。
+        　02: ３点以上の場合、点０～点２で仮の法線ベクトルを求める。
+        　03: 仮法線ベクトルと(0,0,1)で回転軸と回転角度を求め、ＸＹ平面に変換する。
+        　04: ＸＹ平面上で、点列のＸ，Ｙ座標のみで点列の回り方向を求める。
+        　05: 回り方向が、反時計回りであれば、仮の法線ベクトルを採用する。
+        　06: 回り方向が、時計回りであれば、仮の法線ベクトルの逆ベクトルを採用する。
+        　07: その後、元の各座標点列から外積を求め、先の面法線ベクトルと異なるものが
+        　　　あれば、凹形状とみなす。
+        ３点未満では求められないので、falseで終了する
+    }
+  }
+  |######################################################################################|
+  {define-proc public {calc-coords-normal
+                          coords:{Array-of Double3d}
+                      }:(Double3d, bool)
+    
+    {if Geom.is-debug-calc-coords-normal? then
+        {log4c.trace "                                                                      "}
+        {log4c.trace "====< S:calc-coords-normal 座標点列の法線ベクトルを求める >==========="}
+    }
+    
+    || ３点未満では求められないので、falseで終了する
+    {if coords.size < 3 then
+        {if Geom.is-debug-calc-coords-normal? then
+            {log4c.trace "  NG → ３点未満では求められないので、falseで終了する"}
+            {log4c.trace "====< E:calc-coords-normal 座標点列の法線ベクトルを求める >==========="}
+            {log4c.trace "                                                                      "}
+        }
+        {return ({Double3d.zero}, false)}
+    }
+
+    || 仮の法線ベクトル（外積）を求める
+    let (temp-normal:Double3d, is-ok-temp-normal?:bool) = {Geom.calc-coords-normal-sub coords}
+    {if not is-ok-temp-normal? then
+        || 仕方がないので、別の方法で仮の法線ベクトル（外積）を求める
+        {if Geom.is-debug-calc-coords-normal? then
+            {log4c.trace "  仕方がないので、別の方法で仮の法線ベクトル（外積）を求める"}
+        }
+        let pnt1:Double3d = {coords.get 0}
+        let pnt2:Double3d = {coords.get {floor coords.size / 2} asa int}
+        let pnt3:Double3d = {coords.get (coords.size - 1)}
+        set temp-normal = {Geom.calc-outer-product
+                              {Double3d
+                                  pnt2.x - pnt1.x,
+                                  pnt2.y - pnt1.y,
+                                  pnt2.z - pnt1.z},
+                              {Double3d
+                                  pnt3.x - pnt2.x,
+                                  pnt3.y - pnt2.y,
+                                  pnt3.z - pnt2.z}}
+    }
+    {if Geom.is-debug-calc-coords-normal? then
+        {log4c.trace "  仮の法線ベクトル: " & temp-normal}
+    }
+
+    || ３点の場合は、仮の法線ベクトルを採用する
+    {if coords.size == 3 then
+        {if Geom.is-debug-calc-coords-normal? then
+            {log4c.trace "  OK → 法線ベクトル: " & temp-normal & "  凹み形状？: ３点のため不要"}
+            {log4c.trace "====< E:calc-coords-normal 座標点列の法線ベクトルを求める >==========="}
+            {log4c.trace "                                                                      "}
+        }
+        {return (temp-normal, false)}
+    }
+
+    let wk-coords:{Array-of Double3d} = {new {Array-of Double3d}}
+
+    {if {Utility.is-same-Double3d? temp-normal, {Double3d 0.0, 0.0,  1.0}} or
+        {Utility.is-same-Double3d? temp-normal, {Double3d 0.0, 0.0, -1.0}} then
+        || ＸＹ平面上なので、変換は不要
+        {for coord:Double3d in coords do
+            {wk-coords.append {Double3d coord.x, coord.y, coord.z}}
+        }
+        {if {Utility.is-same-Double3d? temp-normal, {Double3d 0.0, 0.0, -1.0}} then
+            {if Geom.is-debug-calc-coords-normal? then
+                {log4c.trace "  下向きなので、仮の法線を逆にしておく"}
+            }
+            set temp-normal = {Double3d -temp-normal.x, -temp-normal.y, -temp-normal.z}
+        }
+     else
+        || ＸＹ平面に変換する
+        let normal-z:Double3d = {Double3d 0.0, 0.0, 1.0}
+        let (ang:double, axis:Double3d, is-angle?:bool) = {Geom.calc-angle-2-vec temp-normal, normal-z}
+        {if not is-angle? then
+            {if Geom.is-debug-calc-coords-normal? then
+                {log4c.trace "  NG → ＸＹ平面変換時、回転軸、回転角度が求められなかったので、falseで終了する"}
+                {log4c.trace "====< E:calc-coords-normal 座標点列の法線ベクトルを求める >==========="}
+                {log4c.trace "                                                                      "}
+            }
+            {return ({Double3d.zero}, false)}
+        }
+
+        set wk-coords = {Geom.calc-rotate-coords coords, axis, ang}
+    }
+
+    || 点列の回り方向を取得
+    let (is-ccw?:bool, result-is-ccw?:bool) = {Geom.is-pnts-ccw? wk-coords}
+    {if not result-is-ccw? then
+        {if Geom.is-debug-calc-coords-normal? then
+            {log4c.trace "  NG → 回り方向が取得できなかったので、falseで終了する"}
+            {log4c.trace "====< E:calc-coords-normal 座標点列の法線ベクトルを求める >==========="}
+            {log4c.trace "                                                                      "}
+        }
+        {return ({Double3d.zero}, false)}
+    }
+
+    let result-normal:Double3d
+    let result-is-dent-shape:bool = false
+    
+    {if Geom.is-debug-calc-coords-normal? then
+        {log4c.trace "  点列の回り方向？: " & {if is-ccw? then "反時計回り" else "時計回り"}}
+    }
+    {if is-ccw? then
+        set result-normal = {Double3d  temp-normal.x,  temp-normal.y,  temp-normal.z}
+     else
+        set result-normal = {Double3d -temp-normal.x, -temp-normal.y, -temp-normal.z}
+    }
+    {if Geom.is-debug-calc-coords-normal? then
+        {log4c.trace "  調整後の仮の法線ベクトル: " & result-normal}
+    }
+
+    || もとまった法線ベクトルを用いて、凹形状かを判断する
+    {for ii:int = 0 below coords.size do
+        let pos1:int = ii - 1
+        let pos2:int = ii
+        let pos3:int = ii + 1
+        {if pos1 < 0               then set pos1 = coords.size + pos1}
+        {if pos2 > coords.size - 1 then set pos2 = pos2 - coords.size}
+        {if pos3 > coords.size - 1 then set pos3 = pos3 - coords.size}
+
+        || 法線ベクトル（外積）を求める
+        let pnt1:Double3d = {coords.get pos1}
+        let pnt2:Double3d = {coords.get pos2}
+        let pnt3:Double3d = {coords.get pos3}
+        let normal:Double3d = {Geom.calc-outer-product
+                                  {Double3d
+                                      pnt2.x - pnt1.x,
+                                      pnt2.y - pnt1.y,
+                                      pnt2.z - pnt1.z},
+                                  {Double3d
+                                      pnt3.x - pnt2.x,
+                                      pnt3.y - pnt2.y,
+                                      pnt3.z - pnt2.z}}
+        {if Geom.is-debug-calc-coords-normal? then
+            {log4c.trace "  [" & ii & "]  点1 [" & pos1 & " ] : " & pnt1 & "  点2 [" & pos2 & " ] : " & pnt2 & "  点3 [" & pos3 & " ] : " & pnt3}
+            {log4c.trace "    →  法線ベクトル: " & normal}
+        }
+
+        || 法線ベクトルが同一でなければ、凹み形状
+        {if not {Utility.is-same-Double3d-low-precision? result-normal, normal} then
+            {if Geom.is-debug-calc-coords-normal? then
+                {log4c.trace "    →  法線ベクトルが同一でない: 面: " & result-normal & "  点: " & normal}
+            }
+            set result-is-dent-shape = true
+            {break}
+        }
+    }
+    
+    {if Geom.is-debug-calc-coords-normal? then
+        {log4c.trace "  OK → 法線ベクトル: " & result-normal & "  凹み形状？: " & {if result-is-dent-shape then "凹形状" else "凸形状"}}
+        {log4c.trace "====< E:calc-coords-normal 座標点列の法線ベクトルを求める >==========="}
+        {log4c.trace "                                                                      "}
+    }
+    
+    {return (result-normal, result-is-dent-shape)}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 座標点列の法線ベクトルを求める                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     座標点列の法線ベクトルを求めます。
+                     法線ベクトルは、全点列で多いものを採用します。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter coords, 座標点列                                          }
+    {return-vals
+        法線ベクトル,
+        処理フラグ （true: 正常、false: 異常）
+    }
+    {notes
+        ３点未満では求められないので、そのまま返します。
+    }
+  }
+  |######################################################################################|
+  {define-proc public {calc-coords-normal-sub
+                          coords:{Array-of Double3d}
+                      }:(Double3d, bool)
+
+    {if Geom.is-debug-calc-coords-normal-sub? then
+        {log4c.trace "                                                                                          "}
+        {log4c.trace "====< S:calc-coords-normal-sub 座標点列の法線ベクトルを求める（多いものを採用） >========="}
+    }
+    
+    || ３点未満では求められないので、そのまま返す
+    {if coords.size < 3 then
+        {if Geom.is-debug-calc-coords-normal-sub? then
+            {log4c.trace "  NG → ３点未満では求められないので、falseで終了する"}
+            {log4c.trace "====< E:calc-coords-normal-sub 座標点列の法線ベクトルを求める（多いものを採用） >========="}
+            {log4c.trace "                                                                                          "}
+        }
+        {return ({Double3d.zero}, false)}
+    }
+    
+    let outers:{Array-of Double3d} = {new {Array-of Double3d}}
+    let outers-num:{Array-of int} = {new {Array-of int}}
+    {for ii:int = 0 below coords.size do
+        let pos1:int = ii - 1
+        let pos2:int = ii
+        let pos3:int = ii + 1
+        {if pos1 < 0               then set pos1 = coords.size + pos1}
+        {if pos2 > coords.size - 1 then set pos2 = pos2 - coords.size}
+        {if pos3 > coords.size - 1 then set pos3 = pos3 - coords.size}
+
+        {if Geom.is-debug-calc-coords-normal-sub? then
+            {log4c.trace "  点1 [" & pos1 & " ] : " & coords[pos1]}
+            {log4c.trace "  点2 [" & pos2 & " ] : " & coords[pos2]}
+            {log4c.trace "  点3 [" & pos3 & " ] : " & coords[pos3]}
+        }
+        let vec-a:Double3d = {Geom.calc-unit-product-2pos coords[pos2], coords[pos1]}
+        let vec-b:Double3d = {Geom.calc-unit-product-2pos coords[pos3], coords[pos2]}
+        {if Geom.is-debug-calc-coords-normal-sub? then
+            {log4c.trace "ベクトルＡ: " & vec-a & "  ベクトルＢ: " & vec-b}
+        }
+
+        || ２ベクトルが同一でなければ、その中間点は有効
+        {if not {Utility.is-same-Double3d? vec-a, vec-b} then
+
+            || 外積を求める
+            let wk-outer:Double3d = {Geom.calc-outer-product vec-a, vec-b}
+            {if Geom.is-debug-calc-coords-normal-sub? then
+                {log4c.trace "外積: " & wk-outer}
+            }
+
+            let is-find?:bool = false
+            {for outer key ii in outers do
+                {if {Utility.is-same-Double3d? outer, wk-outer} then
+                    {inc outers-num[ii]}
+                    set is-find? = true
+                    {break}
+                }
+            }
+            {if not is-find? then
+                {outers.append wk-outer}
+                {outers-num.append 1}
+            }
+         else
+            {if Geom.is-debug-calc-coords-normal-sub? then
+                {log4c.trace "  →  直線上に並んでいた  →  正規化が必要"}
+                {log4c.trace "====< E:calc-coords-normal-sub 座標点列の法線ベクトルを求める（多いものを採用） >========="}
+                {log4c.trace "                                                                                          "}
+            }
+            {return ({Double3d.zero}, false)}
+        }
+    }
+
+    || 出現数のいちばん多いものを採用
+    let max-pos:int = -1
+    let max:int = -1
+    {for outer-count key ii in outers-num do
+        {if max < outer-count then
+            set max = outer-count
+            set max-pos = ii
+        }
+    }
+
+    {if max-pos < 0 then
+        {if Geom.is-debug-calc-coords-normal-sub? then
+            {log4c.trace "  →  出現数のいちばん多いものがない！！"}
+            {log4c.trace "====< E:calc-coords-normal-sub 座標点列の法線ベクトルを求める（多いものを採用） >========="}
+            {log4c.trace "                                                                                          "}
+        }
+        {return ({Double3d.zero}, false)}
+    }
+    
+    {if Geom.is-debug-calc-coords-normal-sub? then
+        {log4c.trace "========================================"}
+        {log4c.trace "  法線ベクトル: " & outers[max-pos] & "  頂点数: " & coords.size & "  出現数: " & max}
+        {log4c.trace "========================================"}
+        {log4c.trace "====< E:calc-coords-normal-sub 座標点列の法線ベクトルを求める（多いものを採用） >========="}
+        {log4c.trace "                                                                                          "}
+    }
+
+    {return ({Double3d outers[max-pos].x, outers[max-pos].y, outers[max-pos].z}, true)}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 座標点列を回転マトリックスで変換する                        }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     座標点列を回転マトリックスで変換します。            }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter coords, 座標点列                                          }
+    {parameter axis, 回転軸                                              }
+    {parameter ang, 回転角度                                             }
+    {return-vals
+        変換後座標点列
+    }
+  }
+  |######################################################################################|
+  {define-proc public {calc-rotate-coords
+                          coords:{Array-of Double3d},
+                          axis:Double3d,
+                          ang:double
+                      }:{Array-of Double3d}
+    
+    let result:{Array-of Double3d} = {new {Array-of Double3d}}
+    
+    {if Geom.is-debug-calc-rotate-coords? then
+        {log4c.info ""}
+        {log4c.info "====< 回転マトリックス変換 >============"}
+        {for coord key ii in coords do
+            {log4c.trace "処理前 [" & ii & " ] : " & coord}
+        }
+        {log4c.info "========================================"}
+    }
+
+    let rot-mat:Matrix3d = {Matrix3d.create-rotation axis, ang * 1deg}
+    {for coord key ii in coords do
+        let (xx:double, yy:double, zz:double, ww:double) = {rot-mat.multiply coord.x, coord.y, coord.z, 1.0}
+        {result.append {Double3d xx, yy, zz}}
+    }
+
+    {if Geom.is-debug-calc-rotate-coords? then
+        {log4c.info "====< 回転マトリックス変換 >============"}
+        {for coord key ii in result do
+            {log4c.trace "処理後 [" & ii & " ] : " & coord}
+        }
+        {log4c.info "========================================"}
+    }
+    
+    {return result}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ポリゴンを三角形分割する                                    }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ポリゴンを三角形分割します。                        }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter coords, 座標点列                                          }
+    {parameter normal, 法線ベクトル                                      }
+    {return-vals
+        三角形分割後の座標点列の配列,
+        処理フラグ （true: 正常、false: 異常）
+    }
+    {notes
+        ＸＹ座標列のみを分割の対象とします。
+        正しく得るためには、事前に、ＸＹ平面に変換してから処理を行うこと。
+        ポリゴンがねじれている場合は、正しく処理できません。
+        ３点未満では求められません。
+    }
+  }
+  |######################################################################################|
+  {define-proc public {calc-triangulation-polygon
+                          coords:{Array-of Double3d},
+                          normal:Double3d
+                      }:({Array-of {Array-of Double3d}}, bool)
+
+    let result:{Array-of {Array-of Double3d}} = {new {Array-of {Array-of Double3d}}}
+    
+    || ３点未満では求められない
+    {if (coords.size < 3) then
+        {return (result, false)}
+    }
+
+    let wk-pnts:{Array-of Double3d} = {new {Array-of Double3d}}
+    let wk-pnts-no:{Array-of int} = {new {Array-of int}}
+    {for ii:int = 0 below coords.size do
+        {wk-pnts.append {Double3d coords[ii].x, coords[ii].y, coords[ii].z}}
+        {wk-pnts-no.append ii}
+    }
+    
+    let loop-count:int = 0
+    let loop-max:int = coords.size * 2
+    let rotate-count:int = 0
+    let rotate-max:int = coords.size
+
+    let start-pos:int = 0
+    {while true do
+        {inc loop-count}
+        {if (loop-count > loop-max) then
+            {inc rotate-count}
+            {if (rotate-count > rotate-max) then
+                {if Geom.is-debug-calc-triangulation-polygon? then
+                    {log4c.trace "収束しそうにないので、処理を中断しました。"}
+                    {Utility.disp-array-double3d-for-gCAD3D wk-pnts}
+                    {log4c.info "====< 三角形分割結果 >=================="}
+                    {for coords:{Array-of Double3d} key ii in result do
+                        {for coord:Double3d key jj in coords do
+                            {log4c.trace "  [" & ii & "][" & jj & "]  : " & coord}
+                        }
+                    }
+                    {log4c.info "========================================"}
+                }
+                {return (result, false)}
+            }
+
+            || 点列をローテーションしてやり直してみる
+            set loop-count = 0
+            set result = {new {Array-of {Array-of Double3d}}}
+            set wk-pnts = {new {Array-of Double3d}}
+            set wk-pnts-no = {new {Array-of int}}
+            {for ii:int = 0 below coords.size do
+                let pos:int = (ii + rotate-count) mod coords.size
+                {wk-pnts.append {Double3d coords[pos].x, coords[pos].y, coords[pos].z}}
+                {wk-pnts-no.append pos}
+            }
+        }
+
+        {if Geom.is-debug-calc-triangulation-polygon? then
+            {log4c.info "====< 三角形分割 >===================="}
+            {for vartex key ii in wk-pnts do
+                {log4c.trace "処理中 [" & ii & "] : " & wk-pnts-no[ii] & "  " & vartex}
+            }
+            {log4c.info "========================================"}
+        }
+        
+        {if (wk-pnts.size == 3) then
+            || 処理対象が３点となったので、処理終了
+            let tri-polygon:{Array-of Double3d} = {{Array-of Double3d}
+                                                      wk-pnts[0], wk-pnts[1], wk-pnts[2]}
+            {result.append tri-polygon}
+            
+            {if Geom.is-debug-calc-triangulation-polygon? then
+                {log4c.info "====< 三角形分割 >===================="}
+                {for vartexs key ii in result do
+                    {for vartex key jj in vartexs do
+                        {log4c.trace "最終 [ " & ii & " ][ " & jj & " ] : " & vartex}
+                    }
+                }
+                {log4c.info "========================================"}
+            }
+            
+            {return (result, true)}
+        }
+        
+        {for ii:int = 0 below wk-pnts.size do
+            
+            || 処理対象の３頂点
+            let p1:int = ii
+            let p2:int = ((ii + 1) mod wk-pnts.size)
+            let p3:int = ((ii + 2) mod wk-pnts.size)
+            
+            let pnt-1:Double3d = {Double3d {wk-pnts.get p1}.x, {wk-pnts.get p1}.y, {wk-pnts.get p1}.z}
+            let pnt-2:Double3d = {Double3d {wk-pnts.get p2}.x, {wk-pnts.get p2}.y, {wk-pnts.get p2}.z}
+            let pnt-3:Double3d = {Double3d {wk-pnts.get p3}.x, {wk-pnts.get p3}.y, {wk-pnts.get p3}.z}
+            
+            || 処理対象三角形が表向きか？
+            let wk-vec-1:Double3d = {Double3d
+                                        (pnt-2.x - pnt-1.x),
+                                        (pnt-2.y - pnt-1.y),
+                                        (pnt-2.z - pnt-1.z)}
+            let wk-vec-2:Double3d = {Double3d
+                                        (pnt-3.x - pnt-2.x),
+                                        (pnt-3.y - pnt-2.y),
+                                        (pnt-3.z - pnt-2.z)}
+            let wk-normal:Double3d = {Geom.calc-outer-product wk-vec-1, wk-vec-2}
+            
+            {if Geom.is-debug-calc-triangulation-polygon? then
+                {log4c.info "====< 仮三角形分割 >===================="}
+                {log4c.trace "  " & wk-pnts-no[p1] & ": " & pnt-1 & "  " & wk-pnts-no[p2] & ": " & pnt-2 & "  " & wk-pnts-no[p3] & ": " & pnt-3}
+                {log4c.info "========================================"}
+            }
+            
+            || 裏向き＝凹部分のため、次へ
+            {if not {Utility.is-same-Double3d-low-precision? normal, wk-normal} then
+                {if Geom.is-debug-calc-triangulation-polygon? then
+                    {log4c.trace "  裏向き＝凹部分のため、次へ  normal: " & normal & "  wk-normal: " & wk-normal}
+                }
+                {continue}
+            }
+            
+            || 処理対象三角形内に他の頂点が含まれていないか？ （内包点があるときは、次へ）
+            let is-inner-point?:bool = false
+            {for jj:int = 0 below wk-pnts.size - 2 do
+                let ckp:int = ((ii + 2 + jj) mod wk-pnts.size)
+                let wk-vec-1:Double3d = {Double3d
+                                            wk-pnts[p1].x - wk-pnts[ckp].x,
+                                            wk-pnts[p1].y - wk-pnts[ckp].y,
+                                            wk-pnts[p1].z - wk-pnts[ckp].z}
+                let wk-vec-2:Double3d = {Double3d
+                                            wk-pnts[p2].x - wk-pnts[ckp].x,
+                                            wk-pnts[p2].y - wk-pnts[ckp].y,
+                                            wk-pnts[p2].z - wk-pnts[ckp].z}
+                let wk-vec-3:Double3d = {Double3d
+                                            wk-pnts[p3].x - wk-pnts[ckp].x,
+                                            wk-pnts[p3].y - wk-pnts[ckp].y,
+                                            wk-pnts[p3].z - wk-pnts[ckp].z}
+                let ov1-normal:Double3d = {Geom.calc-outer-product wk-vec-1, wk-vec-2}
+                let ov2-normal:Double3d = {Geom.calc-outer-product wk-vec-2, wk-vec-3}
+                let ov3-normal:Double3d = {Geom.calc-outer-product wk-vec-3, wk-vec-1}
+                
+                {if Geom.is-debug-calc-triangulation-polygon? then
+                    {log4c.trace "  [" & ckp & "]  Check Point: " & wk-pnts[ckp] & "  normal: " & normal}
+                    {log4c.trace "    wk-vec-1: " & wk-vec-1 & "  wk-vec-2: " & wk-vec-2 & "  wk-vec-3: " & wk-vec-3}
+                    {log4c.trace "    ov1-normal: " & ov1-normal & "  ov2-normal: " & ov2-normal & "  ov3-normal: " & ov3-normal}
+                }
+                {if ({Utility.is-same-Double3d-low-precision? normal, ov1-normal} and
+                     {Utility.is-same-Double3d-low-precision? normal, ov2-normal} and
+                     {Utility.is-same-Double3d-low-precision? normal, ov3-normal}) then
+                    set is-inner-point? = true
+                    {if Geom.is-debug-calc-triangulation-polygon? then
+                        {log4c.trace "  内包点があるときは、次へ  normal: " & normal & "  ov1-normal: " & ov1-normal & "  ov2-normal: " & ov2-normal & "  ov3-normal: " & ov3-normal}
+                    }
+                    {break}
+                }
+            }
+            {if is-inner-point? then
+                {continue}
+            }
+            
+            || 処理対象三角形が他の構成線と実交点がないか？ （実交点があるときは、次へ）
+            set is-inner-point? = false
+            let ipa:Double3d = {Double3d.zero}
+            let ipb:Double3d = {Double3d.zero}
+            let ipsa:LineIntersectStatus = LineIntersectStatus.none
+            let ipsb:LineIntersectStatus = LineIntersectStatus.none
+            let dist:double = 0.0
+            {for jj:int = 0 below wk-pnts.size - 2 do
+                let ckp1:int = ((ii + 2 + jj) mod wk-pnts.size)
+                let ckp2:int = ((ii + 2 + jj + 1) mod wk-pnts.size)
+
+                set (ipa, ipb, ipsa, ipsb, dist) = {Geom.calc-intersect-line pnt-1, pnt-2, wk-pnts[ckp1], wk-pnts[ckp2]}
+                {if Geom.is-debug-calc-triangulation-polygon? then
+                    {log4c.trace "  [" & wk-pnts-no[p1] & "][" & wk-pnts-no[p2] & "] - [" & wk-pnts-no[ckp1] & "][" & wk-pnts-no[ckp2] & "]"}
+                    {log4c.trace "  →  " & ipsa & "  " & ipsb & "  Dist: " & dist}
+                }
+                {if ipsa == LineIntersectStatus.on-line and
+                    ipsb == LineIntersectStatus.on-line then
+                    set is-inner-point? = true
+                    {if Geom.is-debug-calc-triangulation-polygon? then
+                        {log4c.trace "  実交点があるときは、次へ "}
+                    }
+                    {break}
+                }
+                {if ipsa == LineIntersectStatus.double-line or
+                    ipsb == LineIntersectStatus.double-line then
+                    set is-inner-point? = true
+                    {if Geom.is-debug-calc-triangulation-polygon? then
+                        {log4c.trace "  平行線で重なっているので、次へ "}
+                    }
+                    {break}
+                }
+                set (ipa, ipb, ipsa, ipsb, dist) = {Geom.calc-intersect-line pnt-2, pnt-3, wk-pnts[ckp1], wk-pnts[ckp2]}
+                {if Geom.is-debug-calc-triangulation-polygon? then
+                    {log4c.trace "  [" & wk-pnts-no[p2] & "][" & wk-pnts-no[p3] & "] - [" & wk-pnts-no[ckp1] & "][" & wk-pnts-no[ckp2] & "]"}
+                    {log4c.trace "  →  " & ipsa & "  " & ipsb & "  Dist: " & dist}
+                }
+                {if ipsa == LineIntersectStatus.on-line and
+                    ipsb == LineIntersectStatus.on-line then
+                    set is-inner-point? = true
+                    {if Geom.is-debug-calc-triangulation-polygon? then
+                        {log4c.trace "  実交点があるときは、次へ "}
+                    }
+                    {break}
+                }
+                {if ipsa == LineIntersectStatus.double-line or
+                    ipsb == LineIntersectStatus.double-line then
+                    set is-inner-point? = true
+                    {if Geom.is-debug-calc-triangulation-polygon? then
+                        {log4c.trace "  平行線で重なっているので、次へ "}
+                    }
+                    {break}
+                }
+                set (ipa, ipb, ipsa, ipsb, dist) = {Geom.calc-intersect-line pnt-3, pnt-1, wk-pnts[ckp1], wk-pnts[ckp2]}
+                {if Geom.is-debug-calc-triangulation-polygon? then
+                    {log4c.trace "  [" & wk-pnts-no[p3] & "][" & wk-pnts-no[p1] & "] - [" & wk-pnts-no[ckp1] & "][" & wk-pnts-no[ckp2] & "]"}
+                    {log4c.trace "  →  " & ipsa & "  " & ipsb & "  Dist: " & dist}
+                }
+                {if ipsa == LineIntersectStatus.on-line and
+                    ipsb == LineIntersectStatus.on-line then
+                    set is-inner-point? = true
+                    {if Geom.is-debug-calc-triangulation-polygon? then
+                        {log4c.trace "  実交点があるときは、次へ "}
+                    }
+                    {break}
+                }
+                {if ipsa == LineIntersectStatus.double-line or
+                    ipsb == LineIntersectStatus.double-line then
+                    set is-inner-point? = true
+                    {if Geom.is-debug-calc-triangulation-polygon? then
+                        {log4c.trace "  平行線で重なっているので、次へ "}
+                    }
+                    {break}
+                }
+            }
+            {if is-inner-point? then
+                {continue}
+            }
+            
+            || すでに分割済みの三角形の構成線と実交点がないか？ （実交点があるときは、次へ）
+            set is-inner-point? = false
+            {for coords:{Array-of Double3d} key ii in result do
+                {for jj:int = 0 below coords.size do
+                    let ckp1:int = jj
+                    let ckp2:int = (jj + 1) mod coords.size
+
+                    set (ipa, ipb, ipsa, ipsb, dist) = {Geom.calc-intersect-line pnt-1, pnt-2, coords[ckp1], coords[ckp2]}
+                    {if Geom.is-debug-calc-triangulation-polygon? then
+                        {log4c.trace "  [" & wk-pnts-no[p1] & "][" & wk-pnts-no[p2] & "]"}
+                        {log4c.trace "  →  " & ipsa & "  " & ipsb & "  Dist: " & dist}
+                    }
+                    {if ipsa == LineIntersectStatus.on-line and
+                        ipsb == LineIntersectStatus.on-line then
+                        set is-inner-point? = true
+                        {if Geom.is-debug-calc-triangulation-polygon? then
+                            {log4c.trace "  実交点があるときは、次へ "}
+                        }
+                        {break}
+                    }
+                    {if ipsa == LineIntersectStatus.double-line or
+                        ipsb == LineIntersectStatus.double-line then
+                        set is-inner-point? = true
+                        {if Geom.is-debug-calc-triangulation-polygon? then
+                            {log4c.trace "  平行線で重なっているので、次へ "}
+                        }
+                        {break}
+                    }
+                    set (ipa, ipb, ipsa, ipsb, dist) = {Geom.calc-intersect-line pnt-2, pnt-3, coords[ckp1], coords[ckp2]}
+                    {if Geom.is-debug-calc-triangulation-polygon? then
+                        {log4c.trace "  [" & wk-pnts-no[p2] & "][" & wk-pnts-no[p3] & "]"}
+                        {log4c.trace "  →  " & ipsa & "  " & ipsb & "  Dist: " & dist}
+                    }
+                    {if ipsa == LineIntersectStatus.on-line and
+                        ipsb == LineIntersectStatus.on-line then
+                        set is-inner-point? = true
+                        {if Geom.is-debug-calc-triangulation-polygon? then
+                            {log4c.trace "  実交点があるときは、次へ "}
+                        }
+                        {break}
+                    }
+                    {if ipsa == LineIntersectStatus.double-line or
+                        ipsb == LineIntersectStatus.double-line then
+                        set is-inner-point? = true
+                        {if Geom.is-debug-calc-triangulation-polygon? then
+                            {log4c.trace "  平行線で重なっているので、次へ "}
+                        }
+                        {break}
+                    }
+                    set (ipa, ipb, ipsa, ipsb, dist) = {Geom.calc-intersect-line pnt-3, pnt-1, coords[ckp1], coords[ckp2]}
+                    {if Geom.is-debug-calc-triangulation-polygon? then
+                        {log4c.trace "  [" & wk-pnts-no[p3] & "][" & wk-pnts-no[p1] & "]"}
+                        {log4c.trace "  →  " & ipsa & "  " & ipsb & "  Dist: " & dist}
+                    }
+                    {if ipsa == LineIntersectStatus.on-line and
+                        ipsb == LineIntersectStatus.on-line then
+                        set is-inner-point? = true
+                        {if Geom.is-debug-calc-triangulation-polygon? then
+                            {log4c.trace "  実交点があるときは、次へ "}
+                        }
+                        {break}
+                    }
+                    {if ipsa == LineIntersectStatus.double-line or
+                        ipsb == LineIntersectStatus.double-line then
+                        set is-inner-point? = true
+                        {if Geom.is-debug-calc-triangulation-polygon? then
+                            {log4c.trace "  平行線で重なっているので、次へ "}
+                        }
+                        {break}
+                    }
+                }
+                {if is-inner-point? then
+                    {break}
+                }
+            }
+            {if is-inner-point? then
+                {continue}
+            }
+            
+            || 抽出された三角形を切り出す
+            let tri-polygon:{Array-of Double3d} = {{Array-of Double3d}
+                                                      wk-pnts[p1], wk-pnts[p2], wk-pnts[p3]}
+            {if Geom.is-debug-calc-triangulation-polygon? then
+                {log4c.info "====< 三角形分割 >===================="}
+                {for vartex key ii in tri-polygon do
+                    {log4c.trace "切り出す [ " & ii & " ] : " & vartex}
+                }
+                {log4c.trace "  0: " & wk-pnts-no[p1] & "  1: " & wk-pnts-no[p2] & "  2: " & wk-pnts-no[p3]}
+                {log4c.info "========================================"}
+            }
+            {result.append tri-polygon}
+            {wk-pnts.remove p2}
+            {wk-pnts-no.remove p2}
+            {break}
+        }
+    }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 座標点列よりテクスチャ用の座標点比率を求める                }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     座標点列よりテクスチャ用の座標点比率を求めます。    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter coords-array, 座標点列の配列                              }
+    {parameter normal, 法線ベクトル                                      }
+    {parameter scale-xx, Ｘ軸方向の縮尺                                  }
+    {parameter scale-yy, Ｙ軸方向の縮尺                                  }
+    {return-vals
+        座標点比率の配列,
+        処理フラグ （true: 正常、false: 異常）
+    }
+    {notes
+        テクスチャを貼り付ける際の比率情報を算出します。
+        一旦、ＸＹ平面に変換してから、ＸＹ平面内で最小座標、最大座標を算出して処理しています。
+    }
+  }
+  |######################################################################################|
+  {define-proc public {calc-coords-texture-ratio
+                          coords-array:{Array-of {Array-of Double3d}},
+                          normal:Double3d,
+                          scale-xx:double,
+                          scale-yy:double
+                      }:({Array-of {Array-of FloatFraction2d}}, bool)
+    
+    {if Geom.is-debug-calc-coords-texture-ratio? then
+        {log4c.trace "                                                                                          "}
+        {log4c.trace "====< S:calc-coords-texture-ratio 座標点列よりテクスチャ用の座標点比率を求める >=========="}
+    }
+    
+    let result-array:{Array-of {Array-of FloatFraction2d}} = {new {Array-of {Array-of FloatFraction2d}}}
+
+    {if Geom.is-debug-calc-coords-texture-ratio? then
+        {log4c.trace "====< 座標点比率 処理前 >================"}
+        {log4c.trace "  normal: " & normal & "  scale-xx: " & scale-xx & "  scale-yy: " & scale-yy}
+        {for coords:{Array-of Double3d} key ii in coords-array do
+            {for coord:Double3d key jj in coords do
+                {log4c.trace "   [" & ii & "][" & jj & "] : " & coord}
+            }
+        }
+        {log4c.trace "========================================"}
+    }
+    
+    let wk-coords-array:{Array-of {Array-of Double3d}} = {new {Array-of {Array-of Double3d}}}
+
+    {if {Utility.is-same-Double3d? normal, {Double3d 0.0, 0.0, -1.0}} then
+        || ＸＹ平面上なので、変換は不要
+        {for coords:{Array-of Double3d} key ii in coords-array do
+            let wk-coords:{Array-of Double3d} = {new {Array-of Double3d}}
+            {for coord:Double3d key jj in coords do
+                {wk-coords.append {Double3d coord.x, coord.y, coord.z}}
+            }
+            {wk-coords-array.append wk-coords}
+        }
+     elseif {Utility.is-same-Double3d? normal, {Double3d 0.0, 0.0, 1.0}} then
+        || ＸＹ平面裏面上なので、Ｙ座標のみ反転させる
+        {for coords:{Array-of Double3d} key ii in coords-array do
+            let wk-coords:{Array-of Double3d} = {new {Array-of Double3d}}
+            {for coord:Double3d key jj in coords do
+                {wk-coords.append {Double3d coord.x, -coord.y, coord.z}}
+            }
+            {wk-coords-array.append wk-coords}
+        }
+     else
+        || ＸＹ平面に変換する
+        let normal-y:Double3d = {Double3d 0.0, -1.0, 0.0}
+        let (ang-1:double, axis-1:Double3d, is-angle-1?:bool) = {Geom.calc-angle-2-vec normal, normal-y}
+        {if not is-angle-1? then
+            {if Geom.is-debug-calc-coords-texture-ratio? then
+                {log4c.trace "  NG → ＸＹ平面変換時、回転軸、回転角度が求められなかったので、falseで終了する"}
+                {log4c.trace "====< E:calc-coords-texture-ratio 座標点列よりテクスチャ用の座標点比率を求める >=========="}
+                {log4c.trace "                                                                                          "}
+            }
+            {return (result-array, false)}
+        }
+        let normal-z:Double3d = {Double3d 0.0, 0.0, -1.0}
+        let (ang-2:double, axis-2:Double3d, is-angle-2?:bool) = {Geom.calc-angle-2-vec normal-y, normal-z}
+        {if not is-angle-2? then
+            {if Geom.is-debug-calc-coords-texture-ratio? then
+                {log4c.trace "  NG → ＸＹ平面変換時、回転軸、回転角度が求められなかったので、falseで終了する"}
+                {log4c.trace "====< E:calc-coords-texture-ratio 座標点列よりテクスチャ用の座標点比率を求める >=========="}
+                {log4c.trace "                                                                                          "}
+            }
+            {return (result-array, false)}
+        }
+        {for coords:{Array-of Double3d} key ii in coords-array do
+            let wk-coords1:{Array-of Double3d} = {Geom.calc-rotate-coords coords,     axis-1, ang-1}
+            let wk-coords2:{Array-of Double3d} = {Geom.calc-rotate-coords wk-coords1, axis-2, ang-2}
+            {wk-coords-array.append wk-coords2}
+        }
+    }
+    
+    {if Geom.is-debug-calc-coords-texture-ratio? then
+        {log4c.trace "====< 座標点比率 ＸＹ平面 >=============="}
+        {log4c.trace "  normal: " & normal}
+        {for coords:{Array-of Double3d} key ii in wk-coords-array do
+            {for coord:Double3d key jj in coords do
+                {log4c.trace "   [" & ii & "][" & jj & "] : " & coord}
+            }
+        }
+        {log4c.trace "========================================"}
+    }
+    
+    || ------------------------------------------------------------
+    || 以下は、ＸＹ平面上なので、ＸＹ座標についてのみ処理を行う
+    
+    || 全点列の最大最小値を求める
+    let min-xx:double = max-double
+    let min-yy:double = max-double
+    let max-xx:double = min-double
+    let max-yy:double = min-double
+    {for coords:{Array-of Double3d} key ii in wk-coords-array do
+        {for coord:Double3d key jj in coords do
+            {if min-xx > coord.x then   set min-xx = coord.x}
+            {if min-yy > coord.y then   set min-yy = coord.y}
+            {if max-xx < coord.x then   set max-xx = coord.x}
+            {if max-yy < coord.y then   set max-yy = coord.y}
+        }
+    }
+    let size-xx:double = max-xx - min-xx
+    let size-yy:double = max-yy - min-yy
+    
+    {if Geom.is-debug-calc-coords-texture-ratio? then
+        {log4c.trace "====< 座標点比率 最大最小 >=============="}
+        {log4c.trace "  min-xx:  " & min-xx &  "  min-yy:  " & min-yy}
+        {log4c.trace "  max-xx:  " & max-xx &  "  max-yy:  " & max-yy}
+        {log4c.trace "  size-xx: " & size-xx & "  size-yy: " & size-yy}
+        {log4c.trace "========================================"}
+    }
+    
+    || 各点列の比率を求める
+    {for coords:{Array-of Double3d} key ii in wk-coords-array do
+        let result-coords:{Array-of FloatFraction2d} = {new {Array-of FloatFraction2d}}
+        {for coord:Double3d key jj in coords do
+            let ratio-xx:float = ((coord.x - min-xx) / 1000) asa float
+            let ratio-yy:float = ((coord.y - min-yy) / 1000) asa float
+||--            let ratio-xx:float = ((coord.x - min-xx) / size-xx) asa float
+||--            let ratio-yy:float = ((coord.y - min-yy) / size-yy) asa float
+            {result-coords.append {FloatFraction2d ratio-xx, ratio-yy}}
+        }
+        {result-array.append result-coords}
+    }
+    
+    {if Geom.is-debug-calc-coords-texture-ratio? then
+        {log4c.trace "====< 座標点比率 処理結果 >=============="}
+        {for coords:{Array-of FloatFraction2d} key ii in result-array do
+            {for coord:FloatFraction2d key jj in coords do
+                {log4c.trace "   [" & ii & "][" & jj & "] : " & coord}
+            }
+        }
+        {log4c.trace "========================================"}
+        
+        {log4c.trace "  OK → 正常終了"}
+        {log4c.trace "====< E:calc-coords-texture-ratio 座標点列よりテクスチャ用の座標点比率を求める >=========="}
+        {log4c.trace "                                                                                          "}
+    }
+    
+    {return (result-array, true)}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 座標点列より構成される部分平面との交点を求める              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     座標点列より構成される部分平面との交点を求めます。  }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter coords, 座標点列                                          }
+    {parameter pos1, 直線端点１                                          }
+    {parameter pos2, 直線端点２                                          }
+    {return-vals
+        交点座標,
+        処理フラグ （true: 正常、false: 異常）
+    }
+  }
+  |######################################################################################|
+  {define-proc public {calc-coords-plane-intersection
+                          coords:{Array-of Double3d},
+                          pos1:Double3d,
+                          pos2:Double3d
+                      }:(Double3d, bool)
+    
+    let result:Double3d = {Double3d.zero}
+    
+    {if coords.size < 3 then
+        {return (result, false)}
+    }
+
+    {if Geom.is-debug-calc-coords-plane-intersection? then
+        {log4c.trace ""}
+        {for ii:int = 0 below coords.size do
+            {log4c.trace "  ii: " & ii & "  coord: " & coords[ii]}
+        }
+    }
+    
+    let (normal:Double3d, is-outer-error?:bool) = {Geom.calc-coords-normal coords}
+    {if Geom.is-debug-calc-coords-plane-intersection? then
+        {log4c.trace "  Normal: " & normal}
+    }
+
+    || 座標点列より平面方程式を求める
+    let fa:double = normal.x
+    let fb:double = normal.y
+    let fc:double = normal.z
+    let fd:double = fa * coords[0].x + fb * coords[0].y + fc * coords[0].z
+    {if Geom.is-debug-calc-coords-plane-intersection? then
+        {log4c.trace "  A: " & fa & "  B: " & fb & "  C: " & fc & "  D: " & fd}
+    }
+    
+    || 平面方程式との交点を求める
+    let vex:double = pos2.x - pos1.x
+    let vey:double = pos2.y - pos1.y
+    let vez:double = pos2.z - pos1.z
+    let de:double = normal.x * vex + normal.y * vey + normal.z * vez
+    {if Geom.is-debug-calc-coords-plane-intersection? then
+        {log4c.trace "  VEX: " & vex & "  VEY: " & vey & "  VEZ: " & vez & "  DE: " & de}
+    }
+    {if {Utility.is-same-double? de, 0.0} then
+        {return (result, false)}
+    }
+
+    let dt:double = (fd - (normal.x * pos1.x + normal.y * pos1.y + normal.z * pos1.z)) / de
+    {if Geom.is-debug-calc-coords-plane-intersection? then
+        {log4c.trace "  DT: " & dt}
+    }
+    set result = {Double3d
+                     pos1.x + dt * vex,
+                     pos1.y + dt * vey,
+                     pos1.z + dt * vez}
+    {if Geom.is-debug-calc-coords-plane-intersection? then
+        {log4c.trace "  result: " & result}
+    }
+
+    || 求めた交点がポリゴン内に存在するか？
+    let is-inner-point?:bool = false
+    {for ii:int = 0 below coords.size do
+        let p1:int = ii
+        let p2:int = ((ii + 1) mod coords.size)
+        let p3:int = ((ii + 2) mod coords.size)
+        
+        let wk-vec-1:Double3d = {Double3d
+                                    coords[p1].x - result.x,
+                                    coords[p1].y - result.y,
+                                    coords[p1].z - result.z}
+        let wk-vec-2:Double3d = {Double3d
+                                    coords[p2].x - result.x,
+                                    coords[p2].y - result.y,
+                                    coords[p2].z - result.z}
+        let wk-vec-3:Double3d = {Double3d
+                                    coords[p3].x - result.x,
+                                    coords[p3].y - result.y,
+                                    coords[p3].z - result.z}
+        let ov1-normal:Double3d = {Geom.calc-outer-product wk-vec-1, wk-vec-2}
+        let ov2-normal:Double3d = {Geom.calc-outer-product wk-vec-2, wk-vec-3}
+        let ov3-normal:Double3d = {Geom.calc-outer-product wk-vec-3, wk-vec-1}
+        
+        {if Geom.is-debug-calc-coords-plane-intersection? then
+            {log4c.trace "  normal: " & normal}
+            {log4c.trace "  ov1-normal: " & ov1-normal}
+            {log4c.trace "  ov2-normal: " & ov2-normal}
+            {log4c.trace "  ov3-normal: " & ov3-normal}
+        }
+        let check-normal-num:int = 0
+        {if not {Utility.is-zero-Double3d? ov1-normal} then {inc check-normal-num}}
+        {if not {Utility.is-zero-Double3d? ov2-normal} then {inc check-normal-num}}
+        {if not {Utility.is-zero-Double3d? ov3-normal} then {inc check-normal-num}}
+        
+        let ok-normal-num:int = 0
+        {if {Utility.is-same-Double3d-low-precision? normal, ov1-normal} then {inc ok-normal-num}}
+        {if {Utility.is-same-Double3d-low-precision? normal, ov2-normal} then {inc ok-normal-num}}
+        {if {Utility.is-same-Double3d-low-precision? normal, ov3-normal} then {inc ok-normal-num}}
+
+        {if Geom.is-debug-calc-coords-plane-intersection? then
+            {log4c.trace "  check-normal-num: " & check-normal-num & "  ok-normal-num: " & ok-normal-num}
+        }
+        {if check-normal-num == ok-normal-num then
+            set is-inner-point? = true
+            {break}
+        }
+    }
+    
+    {if Geom.is-debug-calc-coords-plane-intersection? then
+        {log4c.trace "  is-inner-point?: " & is-inner-point?}
+    }
+
+    || 求まった交点が、pos1->pos2のベクトル方向でない場合は、交点としない
+    || （面の傾き誤差により発生する問題の回避策）
+    let check-vec:Double3d = {Geom.calc-unit-product
+                                 {Double3d vex, vey, vez}}
+    let inter-vec:Double3d = {Geom.calc-unit-product
+                                 {Double3d result.x - pos1.x, result.y - pos1.y, result.z - pos1.z}}
+    {if not {Utility.is-same-Double3d-low-precision? check-vec, inter-vec} then
+        set is-inner-point? = false
+    }
+    
+    {return (result, is-inner-point?)}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ２直線の交点を求める                                        }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ２直線の交点を求めます。                            }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter p1, 直線１の始点                                          }
+    {parameter p2, 直線１の終点                                          }
+    {parameter p3, 直線２の始点                                          }
+    {parameter p4, 直線２の終点                                          }
+    {return-vals
+        直線１の交点座標,
+        直線２の交点座標,
+        直線１の交点パラメータ（LineIntersectStatus）,
+        直線２の交点パラメータ（LineIntersectStatus）,
+        交点の距離
+    }
+  }
+  |######################################################################################|
+  {define-proc public {calc-intersect-line
+                          p1:Double3d,
+                          p2:Double3d,
+                          p3:Double3d,
+                          p4:Double3d
+                      }:(Double3d, Double3d, LineIntersectStatus, LineIntersectStatus, double) 
+    
+    {if Geom.is-debug-calc-intersect-line? then
+        {log4c.info "====< ２直線の交点計算 >================"}
+        {log4c.trace "  直線１: " & p1 & "  " & p2}
+        {log4c.trace "  直線２: " & p3 & "  " & p4}
+    }
+    
+    let result-ipa:Double3d = {Double3d.zero}
+    let result-ipb:Double3d = {Double3d.zero}
+    let result-stata:LineIntersectStatus = LineIntersectStatus.none
+    let result-statb:LineIntersectStatus = LineIntersectStatus.none
+    let result-dist:double = 0.0
+    
+    let la:Double3d = {Double3d p2.x - p1.x, p2.y - p1.y, p2.z - p1.z}
+    let lb:Double3d = {Double3d p4.x - p3.x, p4.y - p3.y, p4.z - p3.z}
+    {if Geom.is-debug-calc-intersect-line? then
+        {log4c.trace "  la: " & la & "  lb: " & lb}
+    }
+
+    || 同一直線かどうか？
+    {if ({Utility.is-same-Double3d? p1, p3} and
+         {Utility.is-same-Double3d? p2, p4}) or
+        ({Utility.is-same-Double3d? p2, p3} and
+         {Utility.is-same-Double3d? p1, p4}) then
+        set result-stata = LineIntersectStatus.same-line
+        set result-statb = LineIntersectStatus.same-line
+        {if Geom.is-debug-calc-intersect-line? then
+            {log4c.info "  →  同一直線"}
+            {log4c.info "========================================"}
+        }
+        {return (result-ipa, result-ipb, result-stata, result-statb, result-dist)}
+    }
+    
+    || 各直線の長さを求める
+    let la-len:double = {sqrt ({pow la.x, 2} + {pow la.y, 2} + {pow la.z, 2})}
+    let lb-len:double = {sqrt ({pow lb.x, 2} + {pow lb.y, 2} + {pow lb.z, 2})}
+    {if Geom.is-debug-calc-intersect-line? then
+        {log4c.trace "  la-len: " & la-len & "  lb-len: " & lb-len}
+    }
+
+    || 各直線の単位ベクトルを求める
+    let la-unit-vec:Double3d = {Geom.calc-unit-product la}
+    let lb-unit-vec:Double3d = {Geom.calc-unit-product lb}
+    {if Geom.is-debug-calc-intersect-line? then
+        {log4c.trace "  la-unit-vec: " & la-unit-vec & "  lb-unit-vec: " & lb-unit-vec}
+    }
+
+    || 外積を求める（単位ベクトル化しないものと単位ベクトル化したもの）
+    let ovx:double = la-unit-vec.y * lb-unit-vec.z - la-unit-vec.z * lb-unit-vec.y
+    let ovy:double = la-unit-vec.z * lb-unit-vec.x - la-unit-vec.x * lb-unit-vec.z
+    let ovz:double = la-unit-vec.x * lb-unit-vec.y - la-unit-vec.y * lb-unit-vec.x
+    let outer-vec:Double3d = {Double3d ovx, ovy, ovz}
+    let outer-vec-len:double = {sqrt (ovx * ovx + ovy * ovy + ovz * ovz)}
+
+    || 外積が求められない場合は、平行線、もしくは、同一直線上となる
+    {if {Utility.is-zero-Double3d? outer-vec} or
+        {Utility.is-same-double? outer-vec-len, 0.0} then
+
+        || ２直線の距離を求める
+        let (p3-vp:Double3d, p3-dist:double, p3-t:double) = {Geom.calc-point-line-dist p1, p2, p3}
+        let (p4-vp:Double3d, p4-dist:double, p4-t:double) = {Geom.calc-point-line-dist p1, p2, p4}
+        {if {abs p3-dist - p4-dist} < 0.01 then
+            || 平行線（同一直線上含む）
+            {if {Utility.is-same-double? p3-dist, 0.0} then
+                || 同一直線上
+                {if (p3-t < -Geom.eps and p4-t < -Geom.eps) or
+                    (p3-t > la-len + Geom.eps and p4-t > la-len + Geom.eps) then
+                    set result-stata = LineIntersectStatus.separate-line
+                    set result-statb = LineIntersectStatus.separate-line
+                    {if Geom.is-debug-calc-intersect-line? then
+                        {log4c.info "  →  同一直線上で離れている"}
+                        {log4c.info "========================================"}
+                    }
+                 else
+                    {if ({Utility.is-same-double? p3-t, 0.0} and p4-t < -Geom.eps) or
+                        ({Utility.is-same-double? p4-t, 0.0} and p3-t < -Geom.eps) or
+                        ({Utility.is-same-double? p3-t, la-len} and p4-t > la-len + Geom.eps) or
+                        ({Utility.is-same-double? p4-t, la-len} and p3-t > la-len + Geom.eps) then
+                        set result-stata = LineIntersectStatus.join-line
+                        set result-statb = LineIntersectStatus.join-line
+                        {if Geom.is-debug-calc-intersect-line? then
+                            {log4c.info "  →  同一直線上で端点一致、重なりがない"}
+                            {log4c.info "========================================"}
+                        }
+                     else
+                        set result-stata = LineIntersectStatus.double-line
+                        set result-statb = LineIntersectStatus.double-line
+                        {if Geom.is-debug-calc-intersect-line? then
+                            {log4c.info "  →  同一直線上で重なりがある"}
+                            {log4c.info "========================================"}
+                        }
+                    }
+                }
+             else
+                || 平行線
+                set result-stata = LineIntersectStatus.parallel-line
+                set result-statb = LineIntersectStatus.parallel-line
+                set result-dist = p3-dist
+                {if Geom.is-debug-calc-intersect-line? then
+                    {log4c.info "  →  平行線"}
+                    {log4c.info "========================================"}
+                }
+            }
+         else
+            || 平行線でない。
+            {if Geom.is-debug-calc-intersect-line? then
+                {log4c.info "  →  平行線でない。（外積が求められなかった）"}
+                {log4c.info "========================================"}
+            }
+        }
+        {return (result-ipa, result-ipb, result-stata, result-statb, result-dist)}
+    }
+    
+    let outer-unit-vec:Double3d = {Geom.calc-unit-product outer-vec}
+    {if Geom.is-debug-calc-intersect-line? then
+        {log4c.trace "  outer-vec: " & outer-vec & "  outer-unit-vec: " & outer-unit-vec & "  outer-vec-len: " & outer-vec-len}
+    }
+
+    || ２線分の距離を求める
+    let vec3-1:Double3d = {Double3d (p3.x - p1.x), (p3.y - p1.y), (p3.z - p1.z)}
+    set result-dist = vec3-1.x * outer-unit-vec.x + vec3-1.y * outer-unit-vec.y + vec3-1.z * outer-unit-vec.z
+
+    || 交点のパラメータを求める
+    let ta:double = (vec3-1.x * lb-unit-vec.y * outer-vec.z +
+                     vec3-1.y * lb-unit-vec.z * outer-vec.x +
+                     vec3-1.z * lb-unit-vec.x * outer-vec.y -
+                     vec3-1.x * lb-unit-vec.z * outer-vec.y -
+                     vec3-1.y * lb-unit-vec.x * outer-vec.z -
+                     vec3-1.z * lb-unit-vec.y * outer-vec.x) / (outer-vec-len * outer-vec-len)
+    let tb:double = (vec3-1.x * la-unit-vec.y * outer-vec.z +
+                     vec3-1.y * la-unit-vec.z * outer-vec.x +
+                     vec3-1.z * la-unit-vec.x * outer-vec.y -
+                     vec3-1.x * la-unit-vec.z * outer-vec.y -
+                     vec3-1.y * la-unit-vec.x * outer-vec.z -
+                     vec3-1.z * la-unit-vec.y * outer-vec.x) / (outer-vec-len * outer-vec-len)
+    {if Geom.is-debug-calc-intersect-line? then
+        {log4c.trace "  ta: " & ta & "  tb: " & tb}
+    }
+    
+    || 交点座標を求める
+    set result-ipa = {Double3d
+                         p1.x + la-unit-vec.x * ta,
+                         p1.y + la-unit-vec.y * ta,
+                         p1.z + la-unit-vec.z * ta}
+    set result-ipb = {Double3d
+                         p3.x + lb-unit-vec.x * tb,
+                         p3.y + lb-unit-vec.y * tb,
+                         p3.z + lb-unit-vec.z * tb}
+    
+    || 交点パラメータを求める
+    {if {Utility.is-same-double? ta, 0.0} then
+        set result-stata = LineIntersectStatus.on-start-point
+     elseif ta < 0.0 then
+        set result-stata = LineIntersectStatus.extension-start-point
+     elseif {Utility.is-same-double? ta, la-len} then
+        set result-stata = LineIntersectStatus.on-end-point
+     elseif ta > la-len then
+        set result-stata = LineIntersectStatus.extension-end-point
+     else
+        set result-stata = LineIntersectStatus.on-line
+    }
+    
+    {if {Utility.is-same-double? tb, 0.0} then
+        set result-statb = LineIntersectStatus.on-start-point
+     elseif tb < 0.0 then
+        set result-statb = LineIntersectStatus.extension-start-point
+     elseif {Utility.is-same-double? tb, lb-len} then
+        set result-statb = LineIntersectStatus.on-end-point
+     elseif tb > lb-len then
+        set result-statb = LineIntersectStatus.extension-end-point
+     else
+        set result-statb = LineIntersectStatus.on-line
+    }
+    
+    {if Geom.is-debug-calc-intersect-line? then
+        {log4c.info "  →  直線１: 交点 " & result-ipa & "  パラ: " & result-stata}
+        {log4c.info "      直線２: 交点 " & result-ipb & "  パラ: " & result-statb}
+        {log4c.trace "     距離: " & result-dist}
+        {log4c.info "========================================"}
+    }
+    
+    {return (result-ipa, result-ipb, result-stata, result-statb, result-dist)}
+
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 点と直線の距離を求める                                      }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     点と直線の距離を求めます。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter p1, 直線の始点                                            }
+    {parameter p2, 直線の終点                                            }
+    {parameter p3, 点座標                                                }
+    {return-vals
+        垂点座標,
+        距離,
+        ｔパラメータ
+    }
+  }
+  |######################################################################################|
+  {define-proc public {calc-point-line-dist
+                          p1:Double3d,
+                          p2:Double3d,
+                          p3:Double3d
+                      }:(Double3d, double, double) 
+    
+    {if Geom.is-debug-calc-point-line-dist? then
+        {log4c.info "====< 点と直線の距離計算 >================"}
+        {log4c.trace "  直線: " & p1 & "  " & p2}
+        {log4c.trace "  点:   " & p3}
+    }
+    
+    let result-vp:Double3d = {Double3d.zero}
+    let result-dist:double = 0.0
+    let result-t:double = 0.0
+    
+    let ll:Double3d = {Double3d p2.x - p1.x, p2.y - p1.y, p2.z - p1.z}
+    let len:double = {sqrt ({pow ll.x, 2} + {pow ll.y, 2} + {pow ll.z, 2})}
+    let unit-vec:Double3d = {Geom.calc-unit-product ll}
+    {if Geom.is-debug-calc-point-line-dist? then
+        {log4c.trace "  ll: " & ll & "  len: " & len & "  unit: " & unit-vec}
+    }
+    
+    let a-da-inner:double = {Geom.calc-inner-product p1, unit-vec}
+    let p-da-inner:double = {Geom.calc-inner-product p3, unit-vec}
+    set result-t = -a-da-inner + p-da-inner
+    set result-vp = {Double3d
+                        p1.x + unit-vec.x * result-t,
+                        p1.y + unit-vec.y * result-t,
+                        p1.z + unit-vec.z * result-t}
+    set result-dist = {sqrt ({pow result-vp.x - p3.x, 2} + {pow result-vp.y - p3.y, 2} + {pow result-vp.z - p3.z, 2})}
+    
+    {if Geom.is-debug-calc-point-line-dist? then
+        {log4c.trace "  a-da-inner: " & a-da-inner & "  p-da-inner: " & p-da-inner}
+        {log4c.trace "  →  垂点: " & result-vp & "  距離: " & result-dist & "  ｔ: " & result-t}
+        {log4c.info "=========================================="}
+    }
+
+    {return (result-vp, result-dist, result-t)}
+  }  
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ２点間の距離を求める                                        }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ２点間の距離を求めます。                            }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter p1, 点１                                                  }
+    {parameter p2, 点２                                                  }
+    {return-vals
+        距離
+    }
+  }
+  |######################################################################################|
+  {define-proc public {calc-point-point-dist
+                          p1:Double3d,
+                          p2:Double3d
+                      }:double 
+    
+    let dist:double = {sqrt
+                          ((p1.x - p2.x) * (p1.x - p2.x) +
+                           (p1.y - p2.y) * (p1.y - p2.y) +
+                           (p1.z - p2.z) * (p1.z - p2.z))}
+    
+    {return dist}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose くり抜き形状を考慮して、一筆書きにする                      }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     くり抜き形状を考慮して、一筆書きにします。          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter outer-coords, 外形座標点列                                }
+    {parameter inner-coords, くり抜き座標点列                            }
+    {parameter check-inner-coords, 全くり抜き座標点列の配列              }
+    {return-vals
+        一筆書きの座標点列
+    }
+    {notes
+        ２点以下では求められないので、そのまま返します。
+    }
+  }
+  |######################################################################################|
+  {define-proc private {normalization-inner-coords-sub
+                           outer-coords:{Array-of Double3d},
+                           inner-coords:{Array-of Double3d},
+                           check-inner-coords:{Array-of {Array-of Double3d}}
+                       }:({Array-of Double3d})
+
+    let result:{Array-of Double3d} = {new {Array-of Double3d}}
+    
+    || ２点以下では求められないので、そのまま返す
+    {if outer-coords.size <= 2 or
+        inner-coords.size <= 2 then
+        {return outer-coords}
+    }
+    
+    {if Geom.is-debug-normalization-inner-coords-sub? then
+        {log4c.trace "====< 穴あき座標点列の正規化前 >========"}
+        {for pnt:Double3d key ii in outer-coords do
+            {log4c.trace "  外周  [ " & ii & " ]: " & pnt}
+        }
+        {for pnt:Double3d key ii in inner-coords do
+            {log4c.trace "  内周  [ " & ii & " ]: " & pnt}
+        }
+        {for coords:{Array-of Double3d} key ii in check-inner-coords do
+            {for pnt:Double3d key jj in coords do
+                {log4c.trace "  チェック内周  [ " & ii & " ][ " & jj & " ]: " & pnt}
+            }
+        }
+        {log4c.trace "========================================"}
+    }
+
+    let is-ok-1?:bool = true
+    let is-ok-2?:bool = false
+    {for ii:int = 0 below outer-coords.size do
+        {for jj:int = 0 below inner-coords.size do
+            let p1:Double3d = outer-coords[ii]
+            let p2:Double3d = inner-coords[jj]
+
+            || 外周の各線分との交点チェック
+            set is-ok-1? = true
+            {for kk:int = 0 below outer-coords.size do
+                let p3:Double3d = outer-coords[kk]
+                let p4:Double3d = outer-coords[(kk + 1) mod outer-coords.size]
+                {if Geom.is-debug-normalization-inner-coords-sub? then
+                    {log4c.trace "  外周の各線分との交点チェック"}
+                    {log4c.trace "  [ 外 " & ii & " ][ 内 " & jj & " ]  p1: " & p1 & "  p2: " & p2}
+                    {log4c.trace "  [ 外 " & kk & " ]  p3: " & p3 & "  p4: " & p4}
+                }
+                let (ipa:Double3d, ipb:Double3d,
+                     ipsa:LineIntersectStatus, ipsb:LineIntersectStatus,
+                     dist:double) = {Geom.calc-intersect-line p1, p2,  p3, p4}
+                {if ipsa == LineIntersectStatus.on-line and
+                    ipsb == LineIntersectStatus.on-line then
+                    set is-ok-1? = false
+                    {if Geom.is-debug-normalization-inner-coords-sub? then
+                        {log4c.trace "  →  交差している！！"}
+                    }
+                    {break}
+                }
+                {if ipsa == LineIntersectStatus.double-line or
+                    ipsb == LineIntersectStatus.double-line then
+                    set is-ok-1? = false
+                    {if Geom.is-debug-normalization-inner-coords-sub? then
+                        {log4c.trace "  →  平行線で重なっている！！"}
+                    }
+                    {break}
+                }
+            }
+            {if not is-ok-1? then
+                {continue}
+            }
+
+            || 内周の各線分との交点チェック
+            set is-ok-1? = true
+            {for kk = 0 below inner-coords.size do
+                let p3:Double3d = inner-coords[kk]
+                let p4:Double3d = inner-coords[(kk + 1) mod inner-coords.size]
+                {if Geom.is-debug-normalization-inner-coords-sub? then
+                    {log4c.trace "  内周の各線分との交点チェック"}
+                    {log4c.trace "  [ 外 " & ii & " ][ 内 " & jj & " ]  p1: " & p1 & "  p2: " & p2}
+                    {log4c.trace "  [ 内 " & kk & " ]  p3: " & p3 & "  p4: " & p4}
+                }
+                let (ipa:Double3d, ipb:Double3d,
+                     ipsa:LineIntersectStatus, ipsb:LineIntersectStatus,
+                     dist:double) = {Geom.calc-intersect-line p1, p2,  p3, p4}
+                {if ipsa == LineIntersectStatus.on-line and
+                    ipsb == LineIntersectStatus.on-line then
+                    {if Geom.is-debug-normalization-inner-coords-sub? then
+                        {log4c.trace "  →  交差している！！"}
+                    }
+                    set is-ok-1? = false
+                    {break}
+                }
+                {if ipsa == LineIntersectStatus.double-line or
+                    ipsb == LineIntersectStatus.double-line then
+                    set is-ok-1? = false
+                    {if Geom.is-debug-normalization-inner-coords-sub? then
+                        {log4c.trace "  →  平行線で重なっている！！"}
+                    }
+                    {break}
+                }
+            }
+            {if not is-ok-1? then
+                {continue}
+            }
+            
+            || チェック内周の各線分との交点チェック
+            set is-ok-1? = true
+            {for coords:{Array-of Double3d} key ll in check-inner-coords do
+                {for kk = 0 below coords.size do
+                    let p3:Double3d = coords[kk]
+                    let p4:Double3d = coords[(kk + 1) mod coords.size]
+                    {if Geom.is-debug-normalization-inner-coords-sub? then
+                        {log4c.trace "  チェック内周の各線分との交点チェック"}
+                        {log4c.trace "  [ 外 " & ii & " ][ 内 " & jj & " ]  p1: " & p1 & "  p2: " & p2}
+                        {log4c.trace "  [ 内 " & kk & " ]  p3: " & p3 & "  p4: " & p4}
+                    }
+                    let (ipa:Double3d, ipb:Double3d,
+                         ipsa:LineIntersectStatus, ipsb:LineIntersectStatus,
+                         dist:double) = {Geom.calc-intersect-line p1, p2,  p3, p4}
+                    {if ipsa == LineIntersectStatus.on-line and
+                        ipsb == LineIntersectStatus.on-line then
+                        {if Geom.is-debug-normalization-inner-coords-sub? then
+                            {log4c.trace "  →  交差している！！"}
+                        }
+                        set is-ok-1? = false
+                        {break}
+                    }
+                    {if ipsa == LineIntersectStatus.double-line or
+                        ipsb == LineIntersectStatus.double-line then
+                        set is-ok-1? = false
+                        {if Geom.is-debug-normalization-inner-coords-sub? then
+                            {log4c.trace "  →  平行線で重なっている！！"}
+                        }
+                        {break}
+                    }
+                }
+                {if not is-ok-1? then
+                    {break}
+                }
+            }
+            {if not is-ok-1? then
+                {continue}
+            }
+
+            || ------------------------------------------------------------
+            || 結合可能なので、結合する
+            || ------------------------------------------------------------
+            
+            || 結合点の共有がないかを判断する
+            let same-point-pos-array:{Array-of int} = {new {Array-of int}}
+            {for kk:int = 0 below outer-coords.size do
+                {if kk != ii then
+                    {if {Utility.is-same-Double3d? outer-coords[ii], outer-coords[kk]} then
+                        {same-point-pos-array.append kk}
+                    }
+                }
+            }
+            {if Geom.is-debug-normalization-inner-coords-sub? then
+                {log4c.trace "  結合点の共有: " & same-point-pos-array.size}
+                {for pos:int in same-point-pos-array do
+                    {log4c.trace "  " & pos}
+                }
+                {log4c.trace "----------------------------------------"}
+            }
+            {if same-point-pos-array.size > 0 then
+                let before-pos:int = (ii - 1 + outer-coords.size) mod outer-coords.size
+                let base-vec:Double3d = {Double3d
+                                            outer-coords[before-pos].x - outer-coords[ii].x,
+                                            outer-coords[before-pos].y - outer-coords[ii].y,
+                                            outer-coords[before-pos].z - outer-coords[ii].z}
+                let inner-pos:int = jj
+                let inner-vec:Double3d = {Double3d
+                                             inner-coords[inner-pos].x - outer-coords[ii].x,
+                                             inner-coords[inner-pos].y - outer-coords[ii].y,
+                                             inner-coords[inner-pos].z - outer-coords[ii].z}
+                let (ang:double, normal:Double3d, is-ok?:bool) = {Geom.calc-angle-2-vec
+                                                                     base-vec, inner-vec}
+                {if not is-ok? then
+                    {break}
+                }
+                let base-ang:double = ang
+                let min-ang:double = max-double
+                let ins-pos:int = ii
+                
+                {if Geom.is-debug-normalization-inner-coords-sub? then
+                    {log4c.trace "  ii: " & ii & "  before-pos: " & before-pos & "base-vec: " & base-vec & "  base-ang: " & base-ang}
+                    {log4c.trace "  jj: " & jj & "  inner-pos: " & inner-pos & "inner-vec: " & inner-vec}
+                }
+                
+                {for same-point-pos:int in same-point-pos-array do
+                    let pos:int = (same-point-pos - 1) mod outer-coords.size
+                    let check-vec:Double3d = {Double3d
+                                                 outer-coords[pos].x - outer-coords[same-point-pos].x,
+                                                 outer-coords[pos].y - outer-coords[same-point-pos].y,
+                                                 outer-coords[pos].z - outer-coords[same-point-pos].z}
+                    let (ang:double, normal:Double3d, is-ok?:bool) = {Geom.calc-angle-2-vec
+                                                                         base-vec, check-vec}
+                    
+                    let ang-diff:double = base-ang - ang
+                    {if Geom.is-debug-normalization-inner-coords-sub? then
+                        {log4c.trace "  ang: " & ang & "  ang-diff: " & ang-diff & "  is-ok?: " & is-ok?}
+                    }
+                    {if is-ok? and
+                        ang-diff > 0.0 and
+                        ang-diff < min-ang then
+                        set min-ang = ang
+                        set ins-pos = same-point-pos
+                    }
+                }
+
+                {if Geom.is-debug-normalization-inner-coords-sub? then
+                    {log4c.trace "  ins-pos: " & ins-pos & "  min-ang: " & min-ang}
+                }
+                
+                || 挿入を行う
+                {for kk:int = 0 below outer-coords.size do
+                    {if kk != ins-pos then
+                        {result.append outer-coords[kk]}
+                     else
+                        {result.append outer-coords[kk]}
+                        || 始点を２度登録するので、'below'ではなく、'to'となる
+                        {for ll:int = 0 to inner-coords.size do
+                            let pos:int = (jj + ll) mod inner-coords.size
+                            {result.append inner-coords[pos]}
+                        }
+                        {result.append outer-coords[kk]}
+                    }
+                }
+             else
+                {for kk:int = 0 below outer-coords.size do
+                    {if kk != ii then
+                        {result.append outer-coords[kk]}
+                     else
+                        {result.append outer-coords[kk]}
+                        || 始点を２度登録するので、'below'ではなく、'to'となる
+                        {for ll:int = 0 to inner-coords.size do
+                            let pos:int = (jj + ll) mod inner-coords.size
+                            {result.append inner-coords[pos]}
+                        }
+                        {result.append outer-coords[kk]}
+                    }
+                }
+            }
+            set is-ok-2? = true
+            {break}
+
+        }
+        {if is-ok-2? then
+            {break}
+        }
+    }
+    
+    {if Geom.is-debug-normalization-inner-coords-sub? then
+        {log4c.trace "====< 穴あき座標点列の正規化後 >========"}
+        {for ii:int = 0 below result.size do
+            {log4c.trace "  [ " & ii & " ]: " & result[ii]}
+        }
+        {log4c.trace "========================================"}
+    }
+
+    {return result}
+  }
+  
+  
+}

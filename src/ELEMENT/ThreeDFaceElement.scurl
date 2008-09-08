@@ -1,0 +1,613 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  描画要素：３次元面                                                       }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ３次元面要素。
+                     複数の３次元面が保持できます。
+                 }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public ThreeDFaceElement {inherits ModelElement}
+  
+  |###|{doc-next {purpose 座標点列の配列}}|###|
+  field public-get coords-array:{Array-of {Array-of Double3d}}
+  
+  |###|{doc-next {purpose 各座標点の法線ベクトル}}|###|
+  field public-get normals-array:{Array-of {Array-of Double3d}}
+  
+  |###|{doc-next {purpose テクスチャの為の平面内での各頂点の位置関係値}}|###|
+  field public-get ratios-array:{Array-of {Array-of FloatFraction2d}}
+  
+  |###|{doc-next {purpose テクスチャ情報}}|###|
+  field public texture:#FillPattern
+  
+  |###|{doc-next {purpose テクスチャがあるか？}}|###|
+  field public is-texture?:bool
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 描画要素：３次元面のコンストラクタ                          }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     初期処理を行う。                                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {constructor public {default}
+    set self.coords-array = {new {Array-of {Array-of Double3d}}}
+    set self.normals-array = {new {Array-of {Array-of Double3d}}}
+    set self.ratios-array = {new {Array-of {Array-of FloatFraction2d}}}
+    set self.texture = null
+    set self.is-texture? = false
+    {construct-super}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 自身のインスタンスを生成する                                }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     自身のインスタンスを生成する。                      }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        描画要素
+    }
+  }
+  |######################################################################################|
+  {method public {make-self}:ModelElement
+    {return {ThreeDFaceElement}}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 自身のポリゴンを作成する                                    }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     自身のポリゴンを作成する。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter id, 要素ID                                                }
+  }
+  |######################################################################################|
+  {method public {make-polygon
+                     id:int}:void
+
+    set self.id = id
+    
+||--    {log4c.info "ThreeDFaceElement: ID: [" & id & "]  座標列数: " & self.coords-array.size}
+    {for coords key ii in self.coords-array do
+        
+||--        {log4c.info "ThreeDFaceElement: ID: [" & id & "][" & ii & "]  頂点数: " & coords.size}
+||--        {for pnt:Double3d key jj in coords do
+||--            {log4c.trace "[" & ii & "][" & jj & "]  " & pnt}
+||--        }
+
+        let colors:{Array-of Pixel} = {new {Array-of Pixel}}
+        {for jj:int = 0 below coords.size do
+            {colors.append self.color}
+        }
+        
+        let vertices:{Array-of FloatDistance3d} = {new {Array-of FloatDistance3d}}
+        {for coord key kk in coords do
+            {vertices.append {Utility.Double3d2FloatDistance3d coord}}
+        }
+
+        {if not self.is-texture? then
+            {self.polygon-sets.append {CustomPolygonSet
+                                          id,
+                                          CustomPolygonSetType.three-d-face-element,
+                                          sub-id = ii,
+                                          is-intersection? = true,
+                                          vertices = vertices,
+                                          colors = colors,
+                                          primitive-type = PrimitiveType.polygon}}
+         else
+            {self.polygon-sets.append {CustomPolygonSet
+                                          id,
+                                          CustomPolygonSetType.three-d-face-element,
+                                          sub-id = ii,
+                                          is-intersection? = true,
+                                          vertices = vertices,
+                                          colors = colors,
+                                          fill-pattern = {non-null self.texture},
+                                          texture-coords = self.ratios-array[ii],
+                                          primitive-type = PrimitiveType.polygon}}
+        }
+        
+||--        || 縁取り
+||--        {for jj:int = 0 below vertices.size do
+||--            let p1:int = jj
+||--            let p2:int = (jj + 1) mod vertices.size
+||--            let wkp:{Array-of FloatDistance3d} = {new {Array-of FloatDistance3d},
+||--                                                     vertices[p1], vertices[p2]}
+||--            {self.polygon-sets.append {CustomPolygonSet
+||--                                          id,
+||--                                          CustomPolygonSetType.poly-line-element,
+||--                                          sub-id = -100 - ii,
+||--                                          vertices = wkp,
+||--                                          fill-pattern = {FillPattern.from-rgb 0.0, 0.0, 0.0},
+||--                                          primitive-type = PrimitiveType.lines}}
+||--        }
+    }
+    
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ポリゴンを修正する                                           }
+    {details {itemize
+                 {item {code 解説}  ：
+                     座標列で構成される面の法線ベクトルを算出する。
+                     座標列で構成される面を三角形面に分割する。
+                     テクスチャが存在する場合、各頂点の位置関係値を算出する。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {remake-polygon}:bool
+
+||--    {log4c.trace "                                                                      "}
+||--    {log4c.trace "====< S:remake-polygon ポリゴンを修正する >==========================="}
+    
+    || 座標列が凹形状でないかをチェックする　（法線ベクトルにて確認）
+    let new-coords-array:{Array-of {Array-of Double3d}} = {new {Array-of {Array-of Double3d}}}
+    let new-normals-array:{Array-of {Array-of Double3d}} = {new {Array-of {Array-of Double3d}}}
+    let new-ratios-array:{Array-of {Array-of FloatFraction2d}} = {new {Array-of {Array-of FloatFraction2d}}}
+    
+    {for coords key ii in self.coords-array do
+
+||--        {log4c.trace "                                                                      "}
+||--        {log4c.trace "====< ポリゴンを修正 [ " & ii & " / " & self.coords-array.size & " ] >==== ■■■"}
+||--        {log4c.trace "                                                                      "}
+
+        || 各頂点より面の法線ベクトルを取得する
+        let (normal:Double3d, outer-error?:bool) = {Geom.calc-coords-normal coords}
+        {if normal.zero-magnitude? then
+||--            {log4c.error "法線ベクトルが取得できなかった  " & ii}
+            {continue}
+        }
+
+||--        {log4c.trace "  面の法線ベクトル: " & normal}
+        
+        || 座標列が凹形状であったため、座標点列を三角形分割する
+        set outer-error? = true || 常に三角形分割を行う
+        {if outer-error? then
+
+            || 三角形に分割する
+            let (new-tri-vertexs:{Array-of {Array-of Double3d}}, is-ok?:bool) = {Geom.calc-triangulation-polygon coords, normal}
+            {if is-ok? then
+                {for vv:{Array-of Double3d} key ii in new-tri-vertexs do
+                    {new-coords-array.append {vv.clone}}
+||--                    let (tri-normal:Double3d, tri-outer-error?:bool) = {Geom.calc-coords-normal vv}
+                    let new-normals:{Array-of Double3d} = {new {Array-of Double3d}}
+                    {for kk:int = 0 below vv.size do
+                        {new-normals.append normal}
+||--                        {new-normals.append tri-normal}
+                    }
+                    {new-normals-array.append new-normals}
+                }
+             else
+                {log4c.info "========================================"}
+                {log4c.info "三角形分割できなかった！！"}
+                {Utility.disp-array-double3d-for-gCAD3D coords}
+                {log4c.info "========================================"}
+            }
+            
+         else
+            {new-coords-array.append coords}
+            let new-normals:{Array-of Double3d} = {new {Array-of Double3d}}
+            {for kk:int = 0 below coords.size do
+                {new-normals.append normal}
+            }
+            {new-normals-array.append new-normals}
+        }
+        
+    }
+    
+    {if self.is-texture? and new-normals-array.size > 0 then
+        let is-ok?:bool = false
+        let normal:Double3d = {Double3d
+                                  new-normals-array[0][0].x,
+                                  new-normals-array[0][0].y,
+                                  new-normals-array[0][0].z}
+        set (new-ratios-array, is-ok?) = {Geom.calc-coords-texture-ratio
+                                             new-coords-array,
+                                             normal,
+                                             1.0, 1.0}
+        {if not is-ok? then
+            set self.is-texture? = false
+        }
+    }
+    
+    set self.coords-array = {new-coords-array.clone}
+    set self.normals-array = {new-normals-array.clone}
+    set self.ratios-array = {new-ratios-array.clone}
+
+||--    {log4c.trace "====< E:remake-polygon ポリゴンを修正する >==========================="}
+||--    {log4c.trace "                                                                      "}
+    
+    {return true}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ３次元面への矩形投影座標点列を取得                          }
+    {details {itemize
+                 {item {code 解説}  ：
+                     ３次元面をＸＹ平面に変換する。(*1)
+                     変換された３次元面の最小座標、最大座標を求める。
+                     指定矩形座標に対応する座標を求め、(*1)の逆変換で、
+                     ３次元面上の座標に変換する。
+                     変換後の座標は、以下の並びで返される。
+                     　(xx,yy)-(xx+ww,yy)-(xx+ww,yy+hh)-(xx,yy+hh)
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter xx, 矩形基点Ｘ座標                                        }
+    {parameter yy, 矩形基点Ｙ座標                                        }
+    {parameter ww, 矩形幅                                                }
+    {parameter hh, 矩形高さ                                              }
+    {parameter offset, ３次元面からの法線ベクトル方向のオフセット量      }
+    {return-vals
+        矩形投影座標点列：正常の取得できなかった場合は、size=0で返す。
+    }
+  }
+  |######################################################################################|
+  {method public {get-rectangle-projection-coords
+                     xx:double,
+                     yy:double,
+                     ww:double,
+                     hh:double,
+                     offset:double
+                 }:{Array-of Double3d}
+    
+||--    {log4c.trace "                                                                                                             "}
+||--    {log4c.trace "====< S:ThreeDFaceElement.get-rectangle-projection-coords ポリゴンへの矩形投影座標点列を取得する >==========="}
+    
+    let result-array:{Array-of Double3d} = {new {Array-of Double3d}}
+    
+    let normal:Double3d = {Double3d 0.0, 0.0, 1.0}
+    {if self.normals-array.size > 0 then
+        set normal = self.normals-array[0][0]
+    }
+    
+||--    {log4c.trace "====< ポリゴンへの矩形投影座標点列を取得する 処理前 >================"}
+||--    {log4c.trace "  normal: " & normal}
+||--    {for coords:{Array-of Double3d} key ii in self.coords-array do
+||--        {for coord:Double3d key jj in coords do
+||--            {log4c.trace "   [" & ii & "][" & jj & "] : " & coord}
+||--        }
+||--    }
+||--    {log4c.trace "====================================================================="}
+    
+    let wk-coords-array:{Array-of {Array-of Double3d}} = {new {Array-of {Array-of Double3d}}}
+    
+    let type:int = 0
+    let ang-1:double = 0.0
+    let axis-1:Double3d = {Double3d 0.0, 0.0, 1.0}
+    let ang-2:double = 0.0
+    let axis-2:Double3d = {Double3d 0.0, 0.0, 1.0}
+    
+    {if {Utility.is-same-Double3d? normal, {Double3d 0.0, 0.0, 1.0}} then
+        || ＸＹ平面上なので、変換は不要
+        {for coords:{Array-of Double3d} key ii in self.coords-array do
+            let wk-coords:{Array-of Double3d} = {new {Array-of Double3d}}
+            {for coord:Double3d key jj in coords do
+                {wk-coords.append {Double3d coord.x, coord.y, coord.z}}
+            }
+            {wk-coords-array.append wk-coords}
+        }
+     elseif {Utility.is-same-Double3d? normal, {Double3d 0.0, 0.0, -1.0}} then
+        || ＸＹ平面裏面上なので、Ｙ座標のみ反転させる
+        {for coords:{Array-of Double3d} key ii in self.coords-array do
+            let wk-coords:{Array-of Double3d} = {new {Array-of Double3d}}
+            {for coord:Double3d key jj in coords do
+                {wk-coords.append {Double3d coord.x, -coord.y, coord.z}}
+            }
+            {wk-coords-array.append wk-coords}
+        }
+        || 裏面の場合、オフセットは反転させる
+        set offset = -offset
+        set type = 1
+     else
+        || ＸＹ平面に変換する
+        let is-angle-1?:bool = false
+        let is-angle-2?:bool = false
+        let normal-y:Double3d = {Double3d 0.0, -1.0, 0.0}
+        set (ang-1, axis-1, is-angle-1?) = {Geom.calc-angle-2-vec normal, normal-y}
+        {if not is-angle-1? then
+||--            {log4c.trace "  NG → ＸＹ平面変換時、回転軸、回転角度が求められなかったので、falseで終了する"}
+||--            {log4c.trace "====< E:ThreeDFaceElement.get-rectangle-projection-coords ポリゴンへの矩形投影座標点列を取得する >==========="}
+||--            {log4c.trace "                                                                                                             "}
+            {return result-array}
+        }
+        let normal-z:Double3d = {Double3d 0.0, 0.0, 1.0}
+        set (ang-2, axis-2, is-angle-2?) = {Geom.calc-angle-2-vec normal-y, normal-z}
+        {if not is-angle-2? then
+||--            {log4c.trace "  NG → ＸＹ平面変換時、回転軸、回転角度が求められなかったので、falseで終了する"}
+||--            {log4c.trace "====< E:ThreeDFaceElement.get-rectangle-projection-coords ポリゴンへの矩形投影座標点列を取得する >==========="}
+||--            {log4c.trace "                                                                                                             "}
+            {return result-array}
+        }
+        {for coords:{Array-of Double3d} key ii in self.coords-array do
+            let wk-coords1:{Array-of Double3d} = {Geom.calc-rotate-coords coords,     axis-1, ang-1}
+            let wk-coords2:{Array-of Double3d} = {Geom.calc-rotate-coords wk-coords1, axis-2, ang-2}
+            {wk-coords-array.append wk-coords2}
+        }
+        set type = 2
+    }
+    
+||--    {log4c.trace "====< ポリゴンへの矩形投影座標点列を取得する ＸＹ平面 >=============="}
+||--    {log4c.trace "  normal: " & normal & "  type: " & type}
+||--    {for coords:{Array-of Double3d} key ii in wk-coords-array do
+||--        {for coord:Double3d key jj in coords do
+||--            {log4c.trace "   [" & ii & "][" & jj & "] : " & coord}
+||--        }
+||--    }
+||--    {log4c.trace "====================================================================="}
+    
+    || ------------------------------------------------------------
+    || 以下は、ＸＹ平面上なので、ＸＹ座標についてのみ処理を行う
+    
+    || 全点列の最小値を求める
+    let min-xx:double = max-double
+    let min-yy:double = max-double
+    let max-xx:double = min-double
+    let max-yy:double = min-double
+    {for coords:{Array-of Double3d} key ii in wk-coords-array do
+        {for coord:Double3d key jj in coords do
+            {if min-xx > coord.x then   set min-xx = coord.x}
+            {if min-yy > coord.y then   set min-yy = coord.y}
+            {if max-xx < coord.x then   set max-xx = coord.x}
+            {if max-yy < coord.y then   set max-yy = coord.y}
+        }
+    }
+    let size-xx:double = max-xx - min-xx
+    let size-yy:double = max-yy - min-yy
+    
+||--    {log4c.trace "====< 座標点比率 最大最小 >=============="}
+||--    {log4c.trace "  min-xx:  " & min-xx &  "  min-yy:  " & min-yy}
+||--    {log4c.trace "  max-xx:  " & max-xx &  "  max-yy:  " & max-yy}
+||--    {log4c.trace "  size-xx: " & size-xx & "  size-yy: " & size-yy}
+||--    {log4c.trace "========================================"}
+    
+    let wk-result-array:{Array-of Double3d} = {new {Array-of Double3d}}
+    {wk-result-array.append {Double3d min-xx + xx,      min-yy + yy,      wk-coords-array[0][0].z + offset}}
+    {wk-result-array.append {Double3d min-xx + xx + ww, min-yy + yy,      wk-coords-array[0][0].z + offset}}
+    {wk-result-array.append {Double3d min-xx + xx + ww, min-yy + yy + hh, wk-coords-array[0][0].z + offset}}
+    {wk-result-array.append {Double3d min-xx + xx,      min-yy + yy + hh, wk-coords-array[0][0].z + offset}}
+    
+    {if type == 0 then
+        || ＸＹ平面上なので、変換は不要
+        {for coord:Double3d key ii in wk-result-array do
+            {result-array.append coord}
+        }
+     elseif type == 1 then
+        || ＸＹ平面裏面上なので、Ｙ座標のみ反転させる
+        {for coord:Double3d key ii in wk-result-array do
+            {result-array.append {Double3d coord.x, -coord.y, coord.z}}
+        }
+     else
+        || ＸＹ平面に変換する
+        let wk-coords:{Array-of Double3d} = {Geom.calc-rotate-coords wk-result-array, axis-2, -ang-2}
+        set result-array = {Geom.calc-rotate-coords wk-coords, axis-1, -ang-1}
+    }
+    
+||--    {log4c.trace "====< 座標点比率 処理結果 >=============="}
+||--    {for coord:Double3d key ii in result-array do
+||--        {log4c.trace "   [" & ii & "] : " & coord}
+||--    }
+||--    {log4c.trace "========================================"}
+||--        
+||--    {log4c.trace "  OK → 正常終了"}
+||--    {log4c.trace "====< E:ThreeDFaceElement.get-rectangle-projection-coords ポリゴンへの矩形投影座標点列を取得する >==========="}
+||--    {log4c.trace "                                                                                                             "}
+    
+    {return result-array}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 指定３次元座標の３次元面への投影座標を取得                  }
+    {details {itemize
+                 {item {code 解説}  ：
+                     ３次元面をＸＹ平面に変換する。(*1)
+                     同様の変換で、指定座標も変換する。(*2)
+                     変換された３次元面の最小座標、最大座標を求める。
+                     (*2)のＸ，Ｙ座標のみを用いて、最小座標との位置関係を
+                     算出し、その値を投影座標とする。
+                     指定矩形座標に対応する座標を求め、(*1)の逆変換で、
+                     ３次元面上の座標に変換する。
+                     変換後の座標は、以下の並びで返される。
+                     　(xx,yy)-(xx+ww,yy)-(xx+ww,yy+hh)-(xx,yy+hh)
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter xx, 指定Ｘ座標                                            }
+    {parameter yy, 指定Ｙ座標                                            }
+    {parameter zz, 指定Ｚ座標                                            }
+    {return-vals
+        投影Ｘ座標,
+        投影Ｙ座標,
+        処理結果
+    }
+  }
+  |######################################################################################|
+  {method public {get-projection-coord
+                     xx:double,
+                     yy:double,
+                     zz:double
+                 }:(px:double, py:double, ok?:bool)
+    
+||--    {log4c.trace "                                                                                          "}
+||--    {log4c.trace "====< S:ThreeDFaceElement.get-projection-coord ポリゴンへの投影座標を取得する >==========="}
+    
+    let in-coord:Double3d = {Double3d xx, yy, zz}
+    let result-px:double = 0.0
+    let result-py:double = 0.0
+    let result-ok?:bool = false
+    
+    let normal:Double3d = {Double3d 0.0, 0.0, 1.0}
+    {if self.normals-array.size > 0 then
+        set normal = self.normals-array[0][0]
+    }
+    
+||--    {log4c.trace "====< ポリゴンへの投影座標を取得 処理前 >================"}
+||--    {log4c.trace "  normal: " & normal}
+||--    {for coords:{Array-of Double3d} key ii in self.coords-array do
+||--        {for coord:Double3d key jj in coords do
+||--            {log4c.trace "   [" & ii & "][" & jj & "] : " & coord}
+||--        }
+||--    }
+||--    {log4c.trace "   入力座標: " & in-coord}
+||--    {log4c.trace "========================================================="}
+    
+    let wk-coords-array:{Array-of {Array-of Double3d}} = {new {Array-of {Array-of Double3d}}}
+    let wk-in-coord:Double3d = {Double3d 0.0, 0.0, 0.0}
+    
+    let type:int = 0
+    let ang-1:double = 0.0
+    let axis-1:Double3d = {Double3d 0.0, 0.0, 1.0}
+    let ang-2:double = 0.0
+    let axis-2:Double3d = {Double3d 0.0, 0.0, 1.0}
+    
+    {if {Utility.is-same-Double3d? normal, {Double3d 0.0, 0.0, 1.0}} then
+        || ＸＹ平面上なので、変換は不要
+        {for coords:{Array-of Double3d} key ii in self.coords-array do
+            let wk-coords:{Array-of Double3d} = {new {Array-of Double3d}}
+            {for coord:Double3d key jj in coords do
+                {wk-coords.append {Double3d coord.x, coord.y, coord.z}}
+            }
+            {wk-coords-array.append wk-coords}
+        }
+        set wk-in-coord = {Double3d in-coord.x, in-coord.y, in-coord.z}
+     elseif {Utility.is-same-Double3d? normal, {Double3d 0.0, 0.0, -1.0}} then
+        || ＸＹ平面裏面上なので、Ｙ座標のみ反転させる
+        {for coords:{Array-of Double3d} key ii in self.coords-array do
+            let wk-coords:{Array-of Double3d} = {new {Array-of Double3d}}
+            {for coord:Double3d key jj in coords do
+                {wk-coords.append {Double3d coord.x, -coord.y, coord.z}}
+            }
+            {wk-coords-array.append wk-coords}
+        }
+        set type = 1
+        set wk-in-coord = {Double3d in-coord.x, -in-coord.y, in-coord.z}
+     else
+        || ＸＹ平面に変換する
+        let is-angle-1?:bool = false
+        let is-angle-2?:bool = false
+        let normal-y:Double3d = {Double3d 0.0, -1.0, 0.0}
+        set (ang-1, axis-1, is-angle-1?) = {Geom.calc-angle-2-vec normal, normal-y}
+        {if not is-angle-1? then
+||--            {log4c.trace "  NG → ＸＹ平面変換時、回転軸、回転角度が求められなかったので、falseで終了する"}
+||--            {log4c.trace "====< E:ThreeDFaceElement.get-projection-coord ポリゴンへの投影座標を取得する >==========="}
+||--            {log4c.trace "                                                                                          "}
+            {return (result-px, result-py, result-ok?)}
+        }
+        let normal-z:Double3d = {Double3d 0.0, 0.0, 1.0}
+        set (ang-2, axis-2, is-angle-2?) = {Geom.calc-angle-2-vec normal-y, normal-z}
+        {if not is-angle-2? then
+||--            {log4c.trace "  NG → ＸＹ平面変換時、回転軸、回転角度が求められなかったので、falseで終了する"}
+||--            {log4c.trace "====< E:ThreeDFaceElement.get-projection-coord ポリゴンへの投影座標を取得する >==========="}
+||--            {log4c.trace "                                                                                          "}
+            {return (result-px, result-py, result-ok?)}
+        }
+        {for coords:{Array-of Double3d} key ii in self.coords-array do
+            let wk-coords1:{Array-of Double3d} = {Geom.calc-rotate-coords coords,     axis-1, ang-1}
+            let wk-coords2:{Array-of Double3d} = {Geom.calc-rotate-coords wk-coords1, axis-2, ang-2}
+            {wk-coords-array.append wk-coords2}
+        }
+        set type = 2
+        
+        let rot-mat1:Matrix3d = {Matrix3d.create-rotation axis-1, ang-1 * 1deg}
+        let (xx1:double, yy1:double, zz1:double, ww1:double) = {rot-mat1.multiply in-coord.x, in-coord.y, in-coord.z, 1.0}
+        let rot-mat2:Matrix3d = {Matrix3d.create-rotation axis-2, ang-2 * 1deg}
+        let (xx2:double, yy2:double, zz2:double, ww2:double) = {rot-mat2.multiply xx1, yy1, zz1, 1.0}
+        set wk-in-coord = {Double3d xx2, yy2, zz2}
+    }
+    
+||--    {log4c.trace "====< ポリゴンへの投影座標を取得 ＸＹ平面 >=============="}
+||--    {log4c.trace "  normal: " & normal & "  type: " & type}
+||--    {for coords:{Array-of Double3d} key ii in wk-coords-array do
+||--        {for coord:Double3d key jj in coords do
+||--            {log4c.trace "   [" & ii & "][" & jj & "] : " & coord}
+||--        }
+||--    }
+||--    {log4c.trace "   入力座標: " & wk-in-coord}
+||--    {log4c.trace "========================================================="}
+    
+    || ------------------------------------------------------------
+    || 以下は、ＸＹ平面上なので、ＸＹ座標についてのみ処理を行う
+    
+    || 全点列の最小値を求める
+    let min-xx:double = max-double
+    let min-yy:double = max-double
+    let max-xx:double = min-double
+    let max-yy:double = min-double
+    {for coords:{Array-of Double3d} key ii in wk-coords-array do
+        {for coord:Double3d key jj in coords do
+            {if min-xx > coord.x then   set min-xx = coord.x}
+            {if min-yy > coord.y then   set min-yy = coord.y}
+            {if max-xx < coord.x then   set max-xx = coord.x}
+            {if max-yy < coord.y then   set max-yy = coord.y}
+        }
+    }
+    let size-xx:double = max-xx - min-xx
+    let size-yy:double = max-yy - min-yy
+    
+||--    {log4c.trace "====< 座標点比率 最大最小 >=============="}
+||--    {log4c.trace "  min-xx:  " & min-xx &  "  min-yy:  " & min-yy}
+||--    {log4c.trace "  max-xx:  " & max-xx &  "  max-yy:  " & max-yy}
+||--    {log4c.trace "  size-xx: " & size-xx & "  size-yy: " & size-yy}
+||--    {log4c.trace "========================================"}
+    
+    set result-px = wk-in-coord.x - min-xx
+    set result-py = wk-in-coord.y - min-yy
+    set result-ok? = true
+    
+||--    {log4c.trace "====< 座標点比率 処理結果 >=============="}
+||--    {log4c.trace "   X: " & result-px & "  Y: " & result-py & "  ok?: " & result-ok?}
+||--    {log4c.trace "========================================"}
+    
+||--    {log4c.trace "  OK → 正常終了"}
+||--    {log4c.trace "====< E:ThreeDFaceElement.get-projection-coord ポリゴンへの投影座標を取得する >==========="}
+||--    {log4c.trace "                                                                                          "}
+    
+    {return (result-px, result-py, result-ok?)}
+  }
+  
+  
+}

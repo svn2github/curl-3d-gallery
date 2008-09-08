@@ -1,0 +1,344 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  メイン画面                                                               }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     メイン画面                            }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public Contents {inherits Frame}
+  
+  |###|{doc-next {purpose Contentsの実体（Singleton）}}|###|
+  let   private _singleton        :#Contents
+  
+  |###|{doc-next {purpose SceneGraphic}}|###|
+  field package graphic           :CustomSceneGraphic
+  
+  |###|{doc-next {purpose メニュー}}|###|
+  field package menu              :Menu
+  
+  |###|{doc-next {purpose コントロールパネル}}|###|
+  field package controller        :ControlPanel
+  
+  |###|{doc-next {purpose サーバ起動か？}
+         {notes
+             サーバー起動の場合、メニューが非表示となり、
+             コントロールパネルの内容が変わります。
+         }
+       }
+  |###|
+  field private query-model?      :bool
+
+  
+  |###|{doc-next {purpose テキスト色}}|###|
+  let public text-color:String = "#EEEEEE"
+  
+  |###|{doc-next {purpose テキスト反転色}}|###|
+  let public text-reverse-color:String = "#555555"
+  
+  |###|{doc-next {purpose テキスト背景色}}|###|
+  let public text-background:String = "#888888"
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose メイン画面のコンストラクタ                                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     メイン画面の初期設定を行います。                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {constructor private {default
+                           ...
+                       }
+    set self.query-model? = false
+    set self.graphic = {CustomSceneGraphic {CustomScene}}
+    set self.menu = {Menu
+                        self.graphic,
+                        not self.query-model?}
+    set self.controller = {ControlPanel
+                              self.graphic,
+                              not self.query-model?}
+    {construct-super
+        width = {make-elastic},
+        {splice ...}}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose メイン画面オブジェクトを返すファクトリー                    }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     メイン画面オブジェクトを返す。
+                     未設定の場合は、新規に生成する。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        メイン画面オブジェクト
+    }
+  }
+  |######################################################################################|
+  {factory public {get-singleton}:Contents
+    {if Contents._singleton == null then
+        set Contents._singleton = {Contents}
+    }
+    {return {non-null Contents._singleton}}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose メイン画面の初期処理                                        }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     各種初期処理を行います。
+                     サーバ起動時のクエリ情報が指定されている場合は、
+                     モデル、リンク情報、操作履歴の読み込みを行います。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {initialize}:void
+    {self.graphic.camera-init}
+    {self.graphic.camera-motion-none}
+    
+    || クエリ情報でモデル情報、リンク情報、操作履歴が指定されている場合は、読み込みを行う
+    let args:Arguments = {self.decode-url-arguments}
+    {with-compiler-directives allow-implicit-any-casts? = true do
+        let (model-file:#String, model-found?:bool) = {args.get-keyword-argument-if-exists "model"}
+        let (link-file:#String, link-found?:bool) = {args.get-keyword-argument-if-exists "link"}
+        let (ope-file:#String, ope-found?:bool) = {args.get-keyword-argument-if-exists "operation"}
+        let obj-man:ObjectManager = {ObjectManager.get-singleton}
+        {if model-found? then
+            {if-non-null model-file = model-file then
+                {try
+                    {obj-man.read-model-from-file self.graphic, {{get-the-applet}.url.merge model-file}}
+                    set self.query-model? = true
+                 catch e:HttpMissingFileException do
+                }
+            }
+        }
+        {if link-found? then
+            {after 0.1s do
+                {if-non-null link-file = link-file then
+                    || モデルを読み込んだObjectManagerを取得し直す
+                    let obj-man:ObjectManager = {ObjectManager.get-singleton}
+                    {if {obj-man.read-model?} then
+                        {try
+                            {obj-man.read-info-from-file self.graphic, {{get-the-applet}.url.merge link-file}}
+                         catch e:HttpMissingFileException do
+                        }
+                    }
+                }
+            }
+        }
+        {if ope-found? then
+            {after 0.1s do
+                {if-non-null ope-file = ope-file then
+                    || モデルを読み込んだObjectManagerを取得し直す
+                    let obj-man:ObjectManager = {ObjectManager.get-singleton}
+                    {if {obj-man.read-model?} then
+                        {try
+                            {obj-man.read-opetrace-from-file self.graphic, {{get-the-applet}.url.merge ope-file}}
+                         catch e:HttpMissingFileException do
+                        }
+                    }
+                    {if {obj-man.get-operation-history-count} > 0 then
+                        {self.controller.visible-opetrace-button}
+                    }
+                }
+            }
+        }
+        {obj-man.set-refresh-contents
+            {proc {}:void
+                let obj-man:ObjectManager = {ObjectManager.get-singleton}
+                {if {obj-man.get-operation-history-count} > 0 then
+                    {self.controller.visible-opetrace-button}
+                 else
+                    {self.controller.unvisible-opetrace-button}
+                }
+            }}
+    }
+    
+    {self.gen-layout}
+    
+    {if self.query-model? then
+        {after .0s do
+            {self.all-button-active}
+        }
+    }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose メイン画面のレイアウト生成                                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     メイン画面のレイアウトを行います。                  }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method private {gen-layout}:void
+    
+    set self.width = {make-elastic}
+    let vb:VBox = {VBox width = {make-elastic}}
+    
+    || サーバ起動時は、メニューを表示しない
+    {if not self.query-model? then
+        {vb.add {HBox
+                    self.menu
+                }}
+    }
+    {vb.add {HBox
+                self.graphic,
+                self.controller
+            }}
+    {self.add vb}
+    
+    {after .0s do
+        {self.all-button-deactive}
+    }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose メニュー・コントロールパネルの非活性化                      }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     メニュー・コントロールパネルのボタンを非活性にします。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {all-button-deactive}:void
+    
+    || ボタンを非活性
+    set self.controller.cursor = cursor-wait-arrow
+    {self.controller.all-button-deactive}
+    
+    set self.graphic.cursor = cursor-wait-arrow
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose メニュー・コントロールパネルの活性化                        }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     メニュー・コントロールパネルのボタンを活性にします。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {all-button-active}:void
+    
+    || ボタンを非活性
+    set self.controller.cursor = cursor-arrow
+    {self.controller.all-button-active}
+    
+    set self.graphic.cursor = cursor-arrow
+  }
+
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose メニューの非活性化                                          }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     メニューを非活性にします。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {all-menu-deactive}:void
+    {self.menu.all-deactive}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose メニューの活性化                                            }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     メニューを活性にします。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {all-menu-active}:void
+    {self.menu.all-active}
+  }
+
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 起動URL中のクエリ文字列解析                                 }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     起動URL中のクエリ文字列を解析し、クエリ情報を返します。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        クエリ情報
+    }
+  }
+  |######################################################################################|
+  {method private {decode-url-arguments}:Arguments
+    
+    let query:String = {get-the-applet}.url.query
+    {if query.size > 0 and query[0] == '?' then
+        set query = {query.tail 1}
+    }
+    
+    let args:Arguments = {Arguments}
+    let pairs:StringArray = {query.split split-chars = "&"}
+    {for pair in pairs do
+        let tokens:StringArray = {pair.split split-chars = "="}
+        {args.append
+            keyword = tokens[0],
+            {if tokens.size <= 1 then
+                ""
+             else
+                tokens[1]
+            }}
+    }
+    
+    {return args}
+    
+  }
+  
+  
+}

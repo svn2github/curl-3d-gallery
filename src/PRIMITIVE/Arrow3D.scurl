@@ -1,0 +1,255 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  ３次元矢印                                                               }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ３次元矢印。
+                 }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public Arrow3D {inherits PolygonSet}
+  
+  |###|{doc-next {purpose 分割数}}|###|
+  field res:int
+  
+  |###|{doc-next {purpose 円錐部半径}}|###|
+  field size-r:FloatDistance
+  
+  |###|{doc-next {purpose 長さ}}|###|
+  field size-l:FloatDistance
+  
+  |###|{doc-next {purpose 座標点列}}|###|
+  field vertices-z:{Array-of FloatDistance3d}
+  
+  |###|{doc-next {purpose 座標点の法線ベクトル}}|###|
+  field normals-z:{Array-of FloatDirection3d}
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ３次元矢印のコンストラクタ                                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     初期処理を行う。                                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter res, 分割数                                               }
+    {parameter size-r, 円錐部半径                                        }
+    {parameter size-l, 長さ                                              }
+    {parameter vector, 矢印向き                                          }
+  }
+  |######################################################################################|
+  {constructor public {default
+                          res:int = 12,
+                          size-r:FloatDistance = 100f(mm),
+                          size-l:FloatDistance = 300f(mm),
+                          vector:Direction3d = {Direction3d.zero},
+                          ...}
+    
+    {construct-super {splice ...}}
+    
+    set self.res = res
+    set self.size-r = size-r
+    set self.size-l = size-l
+    set self.vertices-z = {{Array-of FloatDistance3d}.from-size 
+                              (res + 1) * 6, 
+                              {FloatDistance3d 0f(m), 0f(m), 0f(m)}
+                          }
+    set self.normals-z = {{Array-of FloatDirection3d}.from-size 
+                             (res + 1) * 6, 
+                             {FloatDirection3d 0, 0, 0}
+                         }
+
+    set (self.vertices-z, self.normals-z, self.faces) = {self.arrow3d-vertices-normals res, size-r, size-l}
+    {if not vector.zero-magnitude? then
+        {self.vector vector}
+     else
+        set self.vertices = self.vertices-z
+        set self.normals  = self.normals-z
+    }
+    set self.lighting-enabled? = true
+    set self.specular-color = {Color.from-rgb .7, .7, .7}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ３次元矢印の向き変更                                        }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ３次元矢印の向きを変更する。                        }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter vector, 矢印向き                                          }
+  }
+  |######################################################################################|
+  {method public {vector
+                     vector:Direction3d
+                 }:void
+    
+    {if {Utility.is-same-Double3d? vector, {Double3d 0.0, 0.0,  1.0}} then
+        || ＸＹ平面上なので、変換は不要
+        set self.vertices = self.vertices-z
+        set self.normals  = self.normals-z
+     elseif {Utility.is-same-Double3d? vector, {Double3d 0.0, 0.0, -1.0}} then
+        || ＸＹ平面裏面上なので、Ｙ座標のみ反転させる
+        let wk-vertices:{Array-of FloatDistance3d} = {new {Array-of FloatDistance3d}}
+        let wk-normals:{Array-of FloatDirection3d} = {new {Array-of FloatDirection3d}}
+        
+        {for vertex:FloatDistance3d key ii in self.vertices-z do
+            {wk-vertices.append {FloatDistance3d vertex.x, -vertex.y, vertex.z}}
+        }
+        {for normal:FloatDirection3d key ii in self.normals-z do
+            {wk-normals.append {FloatDirection3d normal.x, -normal.y, normal.z}}
+        }
+        set self.vertices = wk-vertices
+        set self.normals  = wk-normals
+     else
+        || ＸＹ平面に変換する
+        let wk-vertices:{Array-of FloatDistance3d} = {new {Array-of FloatDistance3d}}
+        let wk-normals:{Array-of FloatDirection3d} = {new {Array-of FloatDirection3d}}
+        
+        let vector-z:Double3d = {Double3d 0.0, 0.0, -1.0}
+        let (ang-1:double, axis-1:Double3d, is-angle-1?:bool) = {Geom.calc-angle-2-vec vector, vector-z}
+        {if not is-angle-1? then
+            {return}
+        }
+        
+        let rot-mat-1:Matrix3d = {Matrix3d.create-rotation axis-1, 180deg - ang-1 * 1deg}
+        
+        {for vertex:FloatDistance3d key ii in self.vertices-z do
+            let (xx1:double, yy1:double, zz1:double, ww1:double) = {rot-mat-1.multiply vertex.x / 1mm, vertex.y / 1mm, vertex.z / 1mm, 1.0}
+            {wk-vertices.append {FloatDistance3d xx1 asa float * 1f(mm), yy1 asa float * 1f(mm), zz1 asa float * 1f(mm)}}
+        }
+        {for normal:FloatDirection3d key ii in self.normals-z do
+            let (xx1:double, yy1:double, zz1:double, ww1:double) = {rot-mat-1.multiply normal.x, normal.y, normal.z, 1.0}
+            {wk-normals.append {FloatDirection3d xx1 asa float, yy1 asa float, zz1 asa float}}
+        }
+        set self.vertices = wk-vertices
+        set self.normals  = wk-normals
+    }
+    
+    {return}
+    
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ３次元矢印の座標点算出                                      }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ３次元矢印の座標点、法線ベクトルを算出する。        }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter res, 分割数                                               }
+    {parameter size-r, 円錐部半径                                        }
+    {parameter size-l, 長さ                                              }
+    {return-vals
+        座標点列,
+        座標点の法線ベクトル,
+        座標点の面構成情報
+    }
+  }
+  |######################################################################################|
+  {method private {arrow3d-vertices-normals
+                      res:int,
+                      size-r:FloatDistance,
+                      size-l:FloatDistance
+                  }:({Array-of FloatDistance3d},
+                     {Array-of FloatDirection3d},
+                     #{Array-of #{Array-of int}})
+    
+    let vertices:{Array-of FloatDistance3d} = {{Array-of FloatDistance3d}.from-size 
+                                                  (res + 1) * 6, 
+                                                  {FloatDistance3d 0f(m), 0f(m), 0f(m)}
+                                              }
+    let normals:{Array-of FloatDirection3d} = {{Array-of FloatDirection3d}.from-size 
+                                                  (res + 1) * 6, 
+                                                  {FloatDirection3d 0, 0, 0}
+                                              }
+    let faces:#{Array-of #{Array-of int}} = {{Array-of #{Array-of int}}.from-size res * 2 + 2, null}
+
+    let size-min-r:FloatDistance = size-r / 3.0f
+    let size-min-l:FloatDistance = size-l / 2.0f
+    let nn:int = 0
+    
+    {for ii:int = 0 below res do
+        
+        let az:FloatAngle = -180f(deg) + ii * 360f(deg) / res
+        let xx-cos:float = {cos az} asa float
+        let yy-sin:float = {sin az} asa float
+        
+        || 円筒の部分
+        set vertices[nn]                = {FloatDistance3d xx-cos * size-min-r, yy-sin * size-min-r, 0.0f(mm)}
+        set normals[ nn]                = {FloatDirection3d -xx-cos,             -yy-sin,              0.0f}
+        set vertices[nn + res]          = {FloatDistance3d xx-cos * size-min-r, yy-sin * size-min-r, size-min-l}
+        set normals[ nn + res]          = {FloatDirection3d -xx-cos,             -yy-sin,              0.0f}
+        || 円錐の部分
+        set vertices[nn + res * 2]      = {FloatDistance3d xx-cos * size-r,     yy-sin * size-r,     size-min-l}
+        set normals[ nn + res * 2]      = {FloatDirection3d xx-cos,             yy-sin,              0.0f}
+        set vertices[nn + res * 3]      = {FloatDistance3d 0.0f(mm),            0.0f(mm),            size-l}
+        set normals[ nn + res * 3]      = {FloatDirection3d xx-cos,             yy-sin,              0.0f}
+        || 円錐底面の部分
+        set vertices[nn + res * 4]      = {FloatDistance3d xx-cos * size-r,     yy-sin * size-r,     size-min-l}
+        set normals[ nn + res * 4]      = {FloatDirection3d 0.0f,               0.0f,                -1.0f}
+        || 底面の部分
+        set vertices[nn + res * 5]      = {FloatDistance3d xx-cos * size-min-r, yy-sin * size-min-r, 0.0f(mm)}
+        set normals[ nn + res * 5]      = {FloatDirection3d 0.0f,               0.0f,                -1.0f}
+        
+        {inc nn}
+    }
+    
+    let mm:int = 0
+    {for ii:int = 0 to 2 step 2 do
+        let st-pos:int = ii * res
+        {for jj:int = 0 below res do
+            set faces[mm] = {new {Array-of int},
+                                st-pos + jj,
+                                st-pos + jj + res,
+                                st-pos + ((jj + res + 1) mod res) + res,
+                                st-pos + ((jj + 1) mod res)}
+            {inc mm}
+        }
+    }
+    {for ii:int = 0 below 2 do
+        let st-pos:int = (ii + 4) * res
+        let wk-faces:{Array-of int} = {new {Array-of int}}
+        {for jj:int = 0 below res do
+            {wk-faces.append st-pos + jj}
+        }
+        set faces[mm] = wk-faces
+        {inc mm}
+    }
+    
+    {return vertices, normals, faces}
+  }
+  
+  
+}

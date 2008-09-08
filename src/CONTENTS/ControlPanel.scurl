@@ -1,0 +1,926 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  コントロールパネル                                                       }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     各種操作を行うコントロールパネル。    }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public ControlPanel {inherits Frame}
+
+  |###|{doc-next {purpose ボタン押下時の内部繰り返し回数}
+         {notes
+             １回のボタン押下で、マウス操作1ドットの何倍にするのかという値
+         }
+       }
+  |###|
+  field private constant botton-repeat:int = 4
+  
+  |###|{doc-next {purpose ボタン表示フラグ}
+         {notes
+             通常は、false指定。　（デバッグ用途）
+         }
+       }
+  |###|
+  field private constant draw-button?:bool = false
+  
+  |###|{doc-next {purpose SceneGraphic}}|###|
+  field private graphic :CustomSceneGraphic
+  
+  |###|{doc-next {purpose 現在のズーム値}}|###|
+  field private now-zoom:double
+  
+  
+  |###|{doc-next {purpose ベースVBox}}|###|
+  field private base-vbox:VBox
+  
+  |###|{doc-next {purpose ツールVBox}}|###|
+  field private tool-vbox:VBox
+  
+  || ヘルプ
+  |###|{doc-next {purpose ヘルプ ボタン}}|###|
+  field private help-btn        :LinkButton
+  
+  || 移動
+  |###|{doc-next {purpose 移動ラベル}}|###|
+  field private move-label      :PanelLabel
+  |###|{doc-next {purpose 移動VBox}}|###|
+  field private move-box        :VBox
+  |###|{doc-next {purpose 前進ボタン}}|###|
+  field private forward-btn     :PressingEventButton
+  |###|{doc-next {purpose 後退ボタン}}|###|
+  field private backward-btn    :PressingEventButton
+  |###|{doc-next {purpose 右移動ボタン}}|###|
+  field private right-move-btn  :PressingEventButton
+  |###|{doc-next {purpose 左移動ボタン}}|###|
+  field private left-move-btn   :PressingEventButton
+
+  || 視線変更
+  |###|{doc-next {purpose 視線変更ラベル}}|###|
+  field private view-label      :PanelLabel
+  |###|{doc-next {purpose 視線変更VBox}}|###|
+  field private view-box        :VBox
+  |###|{doc-next {purpose 視点上変更ボタン}}|###|
+  field private up-roll-btn     :PressingEventButton
+  |###|{doc-next {purpose 視点下変更ボタン}}|###|
+  field private down-roll-btn   :PressingEventButton
+  |###|{doc-next {purpose 視点右変更ボタン}}|###|
+  field private right-roll-btn  :PressingEventButton
+  |###|{doc-next {purpose 視点左変更ボタン}}|###|
+  field private left-roll-btn   :PressingEventButton
+  |###|{doc-next {purpose 視点水平変更ボタン}}|###|
+  field private reset-roll-btn  :PressingEventButton
+  
+  || 振り向き
+  |###|{doc-next {purpose 振り向きラベル}}|###|
+  field private turn-label      :PanelLabel
+  |###|{doc-next {purpose 振り向きVBox}}|###|
+  field private turn-box        :VBox
+  |###|{doc-next {purpose 上振り向きボタン}}|###|
+  field private up-turn-btn     :TimeoutEventButton
+  |###|{doc-next {purpose 下振り向きボタン}}|###|
+  field private down-turn-btn   :TimeoutEventButton
+  |###|{doc-next {purpose 右振り向きボタン}}|###|
+  field private right-turn-btn  :TimeoutEventButton
+  |###|{doc-next {purpose 左振り向きボタン}}|###|
+  field private left-turn-btn   :TimeoutEventButton
+  |###|{doc-next {purpose 後ろ振り向きボタン}}|###|
+  field private back-turn-btn   :TimeoutEventButton
+  
+  |###|{doc-next {purpose ズームバー ラベル}}|###|
+  field private zoom-label      :PanelLabel
+  |###|{doc-next {purpose ズームバー}}|###|
+  field private zoom-sb:Scrollbar
+  
+  |###|{doc-next {purpose ツール ラベル}}|###|
+  field private tool-label      :PanelLabel
+  
+  |###|{doc-next {purpose 惰性モード・トグルボタン}}|###|
+  field private momentum-btn:ToggleButton
+  
+  |###|{doc-next {purpose 全体表示ボタン}}|###|
+  field private total-indication-btn:CommandButton
+  
+  |###|{doc-next {purpose 全体表示ボタンを表示するか？}}|###|
+  field private disp-total-indication-btn?:bool = true
+  
+  |###|{doc-next {purpose 操作履歴再生ボタン}}|###|
+  field private opetrace-btn:ToggleButton
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose コントロールパネルのコンストラクタ                          }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     配置コントロールを生成する。                        }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter graphic, CustomSceneGraphic                               }
+    {parameter edit-mode?, エディットモードか？
+        エディットモードの場合、各種編集用ボタンを表示する               }
+  }
+  |######################################################################################|
+  {constructor {default
+                   graphic:CustomSceneGraphic,
+                   edit-mode?:bool,
+                   ...}
+    
+    {construct-super
+        height={make-elastic},
+        {splice ...}}
+    
+    set self.graphic = graphic
+    set self.now-zoom = 1.0
+    
+    
+    || ベースVBox
+    set self.base-vbox = {VBox
+                             border-width = 2pt,
+                             border-style = "raised",
+                             border-color  ="#333333",
+                             spacing = 2mm,
+                             width = 2.6cm,
+                             halign = "center",
+                             height = {make-elastic},
+                             control-appearance-changeable? = true,
+                             font-size = 9pt,
+                             color = "black",
+                             background = {manifest-url "image", "ControlPanel"}
+                         }
+    
+
+    || ヘルプ ボタン
+    set self.help-btn = {LinkButton
+                            width = {make-elastic},
+                            background = {manifest-url "image", "Button"},
+                            color = Contents.text-color,
+                            label = {lmessage ヘルプ},
+                            {on Action do
+                                || ヘルプボタン押下時の処理
+                                let target-url:Url = {manifest-url "help", "Help"}
+                                {browse-url
+                                    target = "new",
+                                    target-url
+                                }
+                            }
+                        }
+
+    || 前進移動
+    let forward-porc:{proc-type {button:int}:bool} = {proc {button:int}:bool
+                                                         let ev:CustomSceneGraphicEyeMoveEvent = {CustomSceneGraphicEyeMoveEvent 0.0, -1.0}
+                                                         {self.graphic.add-event ev, times = self.botton-repeat}
+                                                         {return {{ObjectManager.get-singleton}.get-exec-event?}}
+                                                     }
+    set self.forward-btn = {PressingEventButton
+                               .1s,
+                               paint? = self.draw-button?,
+                               label = {get-up-label}
+                           }
+    {self.forward-btn.set-timeout-proc forward-porc}
+
+    || 後退移動
+    let backward-porc:{proc-type {button:int}:bool} = {proc {button:int}:bool
+                                                          let ev:CustomSceneGraphicEyeMoveEvent = {CustomSceneGraphicEyeMoveEvent 0.0, 1.0}
+                                                          {self.graphic.add-event ev, times = self.botton-repeat}
+                                                          {return {{ObjectManager.get-singleton}.get-exec-event?}}
+                                                      }
+    set self.backward-btn = {PressingEventButton
+                                .1s,
+                                paint? = self.draw-button?,
+                                label = {get-down-label}
+                            }
+    {self.backward-btn.set-timeout-proc backward-porc}
+
+    || 左移動
+    let left-move-porc:{proc-type {button:int}:bool}= {proc {button:int}:bool
+                                                          let ev:CustomSceneGraphicEyeMoveEvent = {CustomSceneGraphicEyeMoveEvent -1.0, 0.0}
+                                                          {self.graphic.add-event ev, times = self.botton-repeat}
+                                                          {return {{ObjectManager.get-singleton}.get-exec-event?}}
+                                                      }
+    set self.left-move-btn = {PressingEventButton
+                                 .1s,
+                                 paint? = self.draw-button?,
+                                 label = {get-left-label}
+                             }
+    {self.left-move-btn.set-timeout-proc left-move-porc}
+    
+    || 右移動
+    let right-move-porc:{proc-type {button:int}:bool}= {proc {button:int}:bool
+                                                           let ev:CustomSceneGraphicEyeMoveEvent = {CustomSceneGraphicEyeMoveEvent 1.0, 0.0}
+                                                           {self.graphic.add-event ev, times = self.botton-repeat}
+                                                           {return {{ObjectManager.get-singleton}.get-exec-event?}}
+                                                       }
+    set self.right-move-btn = {PressingEventButton
+                                  .1s,
+                                  paint? = self.draw-button?,
+                                  label = {get-right-label}
+                              }
+    {self.right-move-btn.set-timeout-proc right-move-porc}
+    
+    
+    || 視線変更－右向き
+    let right-roll-porc:{proc-type {button:int}:bool} = {proc {button:int}:bool
+                                                            let ev:CustomSceneGraphicViewMoveEvent = {CustomSceneGraphicViewMoveEvent 1.0, 0.0}
+                                                            {self.graphic.add-event ev, times = self.botton-repeat}
+                                                            {return {{ObjectManager.get-singleton}.get-exec-event?}}
+                                                        }
+    set self.right-roll-btn = {PressingEventButton
+                                  .1s,
+                                  paint? = self.draw-button?,
+                                  label = {get-right-label}
+                              }
+    {self.right-roll-btn.set-timeout-proc right-roll-porc}
+    
+    || 視線変更－左向き
+    let left-roll-porc:{proc-type {button:int}:bool} = {proc {button:int}:bool
+                                                           let ev:CustomSceneGraphicViewMoveEvent = {CustomSceneGraphicViewMoveEvent -1.0, 0.0}
+                                                           {self.graphic.add-event ev, times = self.botton-repeat}
+                                                           {return {{ObjectManager.get-singleton}.get-exec-event?}}
+                                                       }
+    set self.left-roll-btn = {PressingEventButton
+                                 .1s,
+                                 paint? = self.draw-button?,
+                                 label = {get-left-label}
+                             }
+    {self.left-roll-btn.set-timeout-proc left-roll-porc}
+    
+    || 視線変更－上向き
+    let up-roll-porc:{proc-type {button:int}:bool} = {proc {button:int}:bool
+                                                         let ev:CustomSceneGraphicViewMoveEvent = {CustomSceneGraphicViewMoveEvent 0.0, -1.0}
+                                                         {self.graphic.add-event ev, times = self.botton-repeat}
+                                                         {return {{ObjectManager.get-singleton}.get-exec-event?}}
+                                                     }
+    set self.up-roll-btn = {PressingEventButton
+                               .1s,
+                               paint? = self.draw-button?,
+                               label = {get-up-label}
+                           }
+    {self.up-roll-btn.set-timeout-proc up-roll-porc}
+    
+    || 視線変更－下向き
+    let down-roll-porc:{proc-type {button:int}:bool} = {proc {button:int}:bool
+                                                           let ev:CustomSceneGraphicViewMoveEvent = {CustomSceneGraphicViewMoveEvent 0.0, 1.0}
+                                                           {self.graphic.add-event ev, times = self.botton-repeat}
+                                                           {return {{ObjectManager.get-singleton}.get-exec-event?}}
+                                                       }
+    set self.down-roll-btn = {PressingEventButton
+                                 .1s,
+                                 paint? = self.draw-button?,
+                                 label = {get-down-label}
+                             }
+    {self.down-roll-btn.set-timeout-proc down-roll-porc}
+    
+    || 視線変更－正面向き
+    let reset-roll-porc:{proc-type {button:int}:bool} = {proc {button:int}:bool
+                                                            let (xx:double, yy:double, zz:double) = {self.graphic.get-eye-front-vec}
+                                                            {self.graphic.set-view-vec xx, yy, zz}
+                                                            {self.graphic.set-up-vec 0.0, 0.0, 1.0}
+                                                            {self.graphic.set-camera}
+                                                            {self.graphic.update-drawable}
+                                                            {return {{ObjectManager.get-singleton}.get-exec-event?}}
+                                                        }
+    set self.reset-roll-btn = {PressingEventButton
+                                  .1s,
+                                  paint? = self.draw-button?,
+                                  label = {get-reset-label}
+                              }
+    {self.reset-roll-btn.set-timeout-proc reset-roll-porc}
+    
+    || 振り向き－右向き
+    let right-turn-porc:{proc-type {button:int}:void} = {proc {button:int}:void
+                                                            {self.graphic.camera-pan 90deg}
+                                                        }
+    let right-turn-action-porc:{proc-type {button:int}:void} = {proc {button:int}:void
+                                                                   {self.graphic.camera-pan -90deg}
+                                                               }
+    set self.right-turn-btn = {TimeoutEventButton
+                                  2s,
+                                  paint? = self.draw-button?,
+                                  label = {get-right-label}
+                              }
+    {self.right-turn-btn.set-timeout-proc right-turn-porc}
+    {self.right-turn-btn.set-action-proc right-turn-action-porc}
+    
+    || 振り向き－左向き
+    let left-turn-porc:{proc-type {button:int}:void} = {proc {button:int}:void
+                                                           {self.graphic.camera-pan -90deg}
+                                                       }
+    let left-turn-action-porc:{proc-type {button:int}:void} = {proc {button:int}:void
+                                                                  {self.graphic.camera-pan 90deg}
+                                                              }
+    set self.left-turn-btn = {TimeoutEventButton
+                                 2s,
+                                 paint? = self.draw-button?,
+                                 label = {get-left-label}
+                             }
+    {self.left-turn-btn.set-timeout-proc left-turn-porc}
+    {self.left-turn-btn.set-action-proc left-turn-action-porc}
+    
+    || 振り向き－上向き（実行後は水平視線となる）
+    || ※90度にしてしまうと、仰角を戻す際に方位角が正しく処理できないので、89度としています。
+    let up-turn-porc:{proc-type {button:int}:void} = {proc {button:int}:void
+                                                         {self.graphic.camera-tilt -89deg}
+                                                     }
+    let up-turn-action-porc:{proc-type {button:int}:void} = {proc {button:int}:void
+                                                                let (azimuth:Angle, elevation:Angle) = {self.graphic.get-angle-view}
+                                                                {self.graphic.camera-tilt 89deg - elevation}
+                                                            }
+    set self.up-turn-btn = {TimeoutEventButton
+                               2s,
+                               paint? = self.draw-button?,
+                               label = {get-up-label}
+                           }
+    {self.up-turn-btn.set-timeout-proc up-turn-porc}
+    {self.up-turn-btn.set-action-proc up-turn-action-porc}
+    
+    || 振り向き－下向き（実行後は水平視線となる）
+    || ※90度にしてしまうと、仰角を戻す際に方位角が正しく処理できないので、89度としています。
+    let down-turn-porc:{proc-type {button:int}:void} = {proc {button:int}:void
+                                                           {self.graphic.camera-tilt 89deg}
+                                                       }
+    let down-turn-action-porc:{proc-type {button:int}:void} = {proc {button:int}:void
+                                                                  let (azimuth:Angle, elevation:Angle) = {self.graphic.get-angle-view}
+                                                                  {self.graphic.camera-tilt -89deg - elevation}
+                                                              }
+    set self.down-turn-btn = {TimeoutEventButton
+                                 2s,
+                                 paint? = self.draw-button?,
+                                 label = {get-down-label}
+                             }
+    {self.down-turn-btn.set-timeout-proc down-turn-porc}
+    {self.down-turn-btn.set-action-proc down-turn-action-porc}
+
+    || 振り向き－後向き
+    let back-turn-porc:{proc-type {button:int}:void} = {proc {button:int}:void
+                                                           {self.graphic.camera-pan 180deg}
+                                                       }
+    let back-turn-action-porc:{proc-type {button:int}:void} = {proc {button:int}:void
+                                                                  {self.graphic.camera-pan -180deg}
+                                                              }
+    set self.back-turn-btn = {TimeoutEventButton
+                                 2s,
+                                 paint? = self.draw-button?,
+                                 label = {get-back-label}
+                             }
+    {self.back-turn-btn.set-timeout-proc back-turn-porc}
+    {self.back-turn-btn.set-action-proc back-turn-action-porc}
+    
+    
+    || ズームバー ラベル
+    set self.zoom-label = {PanelLabel label = {lmessage ズーム}}
+    
+    || ズームバー
+    set self.zoom-sb = {Scrollbar
+                           direction = Orientation.horizontal,
+                           control-color = {manifest-url "image", "Button"},
+                           color = Contents.text-color,
+                           height = 5mm,
+                           min = 10,
+                           max = 210,
+                           blocksize = 20,
+                           unitsize = 10,
+                           value = 10,
+                           {on e:Adjustment at s:Scrollbar do
+                               || ズームバー変更時処理
+                               let camera:Camera = self.graphic.scene.camera
+                               let zoom:double = e.value / 10
+                               {camera.zoom 1.0 / self.now-zoom}
+                               {camera.zoom zoom}
+                               {self.graphic.update-drawable}
+                               set self.now-zoom = zoom
+                           }
+                       }
+    
+    || ツール ラベル
+    set self.tool-label = {PanelLabel label = {lmessage ツール}}
+    
+    || 惰性モード・トグルボタン
+    set self.momentum-btn = {ToggleButton
+                                label = {lmessage 惰性モード},
+                                width = {make-elastic},
+                                control-color = {manifest-url "image", "Button"},
+                                color = Contents.text-color,
+                                {on ValueFinished do
+                                    {if self.momentum-btn.value then
+                                        {self.graphic.set-momentum-mode}
+                                        set self.momentum-btn.color = Contents.text-reverse-color
+                                     else
+                                        {self.graphic.reset-momentum-mode}
+                                        set self.momentum-btn.color = Contents.text-color
+                                    }
+                                }
+                            }
+    
+    || 全体表示ボタン
+    set self.total-indication-btn = {CommandButton
+                                        label = {lmessage 全体表示},
+                                        width = {make-elastic},
+                                        control-color = {manifest-url "image", "Button"},
+                                        color = Contents.text-color,
+                                        {on Action do
+                                            || メニュー・コントロールパネルを非活性にする
+                                            {{Contents.get-singleton}.all-button-deactive}
+                                            {{Contents.get-singleton}.all-menu-deactive}
+                                            
+                                            || ズームを戻す処理
+                                            {self.reset-zoom}
+                                            
+                                            {{ObjectManager.get-singleton}.start-total-indication
+                                                self.graphic,
+                                                {proc {}:bool
+                                                    || メニュー・コントロールパネルを活性に戻す
+                                                    {{Contents.get-singleton}.all-menu-active}
+                                                    {{Contents.get-singleton}.all-button-active}
+                                                    {return true}
+                                                }
+                                            }
+                                        }
+                                    }
+    
+    || 操作履歴再生ボタン
+    set self.opetrace-btn = {ToggleButton
+                                label = {lmessage 操作履歴再生},
+                                width = {make-elastic},
+                                control-color = {manifest-url "image", "Button"},
+                                color = Contents.text-color,
+                                {on ValueFinished do
+                                    {if self.opetrace-btn.value then
+                                        {{Contents.get-singleton}.all-button-deactive}
+                                        {{Contents.get-singleton}.all-menu-deactive}
+                                        
+                                        || ズームを戻す処理
+                                        {self.reset-zoom}
+                                        
+                                        set self.opetrace-btn.control-color = {manifest-url "image", "Button"}
+                                        set self.opetrace-btn.enabled? = true
+                                        
+                                        {{ObjectManager.get-singleton}.play-operation-history self.graphic}
+                                        
+                                     else
+                                        || メニュー・コントロールパネルを活性に戻す
+                                        {{Contents.get-singleton}.all-menu-active}
+                                        {{Contents.get-singleton}.all-button-active}
+                                        {{ObjectManager.get-singleton}.stop-operation-history self.graphic}
+                                        
+                                    }
+                                }
+                            }
+    
+    
+    || 移動ラベル
+    set self.move-label = {PanelLabel label = {lmessage 移動}}
+    
+    || 移動VBox
+    set self.move-box = {VBox
+                            spacing = 0mm,
+                            background = {Background {manifest-url "image", "MoveBack"}},
+                            {HBox
+                                {Fill},
+                                self.forward-btn,
+                                {Fill}
+                            },
+                            {HBox
+                                self.left-move-btn,
+                                {Fill width=0.8cm},
+                                self.right-move-btn
+                            },
+                            {HBox
+                                {Fill},
+                                self.backward-btn,
+                                {Fill}
+                            }
+                        }
+    
+    || 視線変更ラベル
+    set self.view-label = {PanelLabel label = {lmessage カメラ回転}}
+    
+    || 視線変更VBox
+    set self.view-box = {VBox
+                            spacing=0mm,
+                            background = {Background {manifest-url "image", "ViewBack"}},
+                            {HBox
+                                {Fill},
+                                self.up-roll-btn,
+                                {Fill}
+                            },
+                            {HBox
+                                self.left-roll-btn,
+                                self.reset-roll-btn,
+                                self.right-roll-btn
+                            },
+                            {HBox
+                                {Fill},
+                                self.down-roll-btn,
+                                {Fill}
+                            }
+                        }
+    
+    || 振り向きラベル
+    set self.turn-label = {PanelLabel label = {lmessage 振り向き}}
+    
+    || 振り向きVBox
+    set self.turn-box = {VBox
+                            spacing=0mm,
+                            background = {Background {manifest-url "image", "TurnBack"}},
+                            {HBox
+                                {Fill},
+                                self.up-turn-btn,
+                                {Fill}
+                            },
+                            {HBox
+                                self.left-turn-btn,
+                                self.back-turn-btn,
+                                self.right-turn-btn
+                            },
+                            {HBox
+                                {Fill},
+                                self.down-turn-btn,
+                                {Fill}
+                            }
+                        }
+    
+    || ツールVBox
+    set self.tool-vbox = {VBox
+                             width={make-elastic},
+                             halign = "center",
+                             self.tool-label,
+                             {Fill height = 2mm}}
+                             
+    {self.gen-visual edit-mode?}
+    
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose コントロールパネルの画面作成                                }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     画面レイアウトを作成する。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter edit-mode?, エディットモードか？
+        エディットモードの場合、各種編集用ボタンを表示する               }
+  }
+  |######################################################################################|
+  {method private {gen-visual
+                      edit-mode?:bool}:void
+
+    || ヘルプ ボタン
+    {self.base-vbox.add self.help-btn}
+    
+    || 前進・後退・左右移動ボタン
+    {self.base-vbox.add {VBox
+                            width = {make-elastic},
+                            halign = "center",
+                            self.move-label,
+                            {Fill height = 1mm},
+                            self.move-box
+                        }}
+    
+    || 視線変更ボタン
+    {self.base-vbox.add {VBox
+                            width = {make-elastic},
+                            halign = "center",
+                            self.view-label,
+                            {Fill height = 1mm},
+                            self.view-box
+                        }}
+    
+    || 振り向きボタン
+    {self.base-vbox.add {VBox
+                            width = {make-elastic},
+                            halign = "center",
+                            self.turn-label,
+                            {Fill height = 1mm},
+                            self.turn-box
+                        }}
+
+    || ズームバー
+    {self.base-vbox.add {VBox
+                            width = {make-elastic},
+                            halign = "center",
+                            self.zoom-label,
+                            {Fill height = 2mm},
+                            {VBox
+                                spacing = 8px,
+                                halign = "center",
+                                {HBox
+                                    {Fill width = 1mm},
+                                    self.zoom-sb,
+                                    {Fill width = 1mm}},
+                                {HBox
+                                    color = Contents.text-color,
+                                    {Fill width = 4px}, {lmessage x1}, {Fill}, {lmessage x20}, {Fill width = 4px}}
+                            }
+                        }}
+
+    
+    || ツール
+    {self.unvisible-opetrace-button}
+    {if self.disp-total-indication-btn? then
+        {self.tool-vbox.add {HBox
+                                {Fill width = 1mm},
+                                self.momentum-btn,
+                                {Fill width = 1mm}}}
+        {self.tool-vbox.add {Fill height = 2mm}}
+        {self.tool-vbox.add {HBox
+                                {Fill width = 1mm},
+                                self.total-indication-btn,
+                                {Fill width = 1mm}}}
+        {self.tool-vbox.add {Fill height = 2mm}}
+        {self.tool-vbox.add {HBox
+                                {Fill width = 1mm},
+                                self.opetrace-btn,
+                                {Fill width = 1mm}}}
+     else
+        {self.tool-vbox.add {HBox
+                                {Fill width = 1mm},
+                                self.momentum-btn,
+                                {Fill width = 1mm}}}
+        {self.tool-vbox.add {Fill height = 2mm}}
+        {self.tool-vbox.add {HBox
+                                {Fill width = 1mm},
+                                self.opetrace-btn,
+                                {Fill width = 1mm}}}
+    }
+    {self.base-vbox.add self.tool-vbox}
+    
+    {self.base-vbox.add {Fill}}
+    {self.add self.base-vbox}
+    
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 操作履歴再生ボタン表示                                      }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     操作履歴再生ボタンを表示 する。                      }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {visible-opetrace-button}:void
+    set self.opetrace-btn.visible? = true
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 操作履歴再生ボタン非表示                                    }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     操作履歴再生ボタンを非表示にする。                  }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {unvisible-opetrace-button}:void
+    set self.opetrace-btn.visible? = false
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ズームバーを元に戻す                                        }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ズームバーを元に戻します。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {reset-zoom}:void
+    let camera:Camera = self.graphic.scene.camera
+    {camera.zoom 1.0 / self.now-zoom}
+    {self.graphic.update-drawable}
+    set self.now-zoom = 1.0
+    {self.zoom-sb.set-scroll-value self.zoom-sb.min}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose コントロールパネルの非活性化                                }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     コントロールパネルのボタンを非活性にします。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {all-button-deactive}:void
+||--    set self.enabled? = false
+
+    set self.base-vbox.background = {Background {manifest-url "image", "ControlPanelNone"}}
+    
+||--    || ヘルプ
+||--    set self.help-btn.background = {Background {manifest-url "image", "ButtonNone"}}
+||--    set self.help-btn.enabled? = false
+    
+    || 移動
+    set self.move-label.background = {Background {manifest-url "image", "PanelLabelNone"}}
+    set self.move-box.background = {Background {manifest-url "image", "MoveBackNone"}}
+    set self.forward-btn.enabled? = false
+    set self.backward-btn.enabled? = false
+    set self.right-move-btn.enabled? = false
+    set self.left-move-btn.enabled? = false
+
+    || 視線変更
+    set self.view-label.background = {Background {manifest-url "image", "PanelLabelNone"}}
+    set self.view-box.background = {Background {manifest-url "image", "ViewBackNone"}}
+    set self.up-roll-btn.enabled? = false
+    set self.down-roll-btn.enabled? = false
+    set self.right-roll-btn.enabled? = false
+    set self.left-roll-btn.enabled? = false
+    set self.reset-roll-btn.enabled? = false
+    
+    || 振り向き
+    set self.turn-label.background = {Background {manifest-url "image", "PanelLabelNone"}}
+    set self.turn-box.background = {Background {manifest-url "image", "TurnBackNone"}}
+    set self.up-turn-btn.enabled? = false
+    set self.down-turn-btn.enabled? = false
+    set self.right-turn-btn.enabled? = false
+    set self.left-turn-btn.enabled? = false
+    set self.back-turn-btn.enabled? = false
+
+    || ズームバー
+    set self.zoom-label.background = {Background {manifest-url "image", "PanelLabelNone"}}
+    set self.zoom-sb.control-color = {manifest-url "image", "ButtonNone"}
+    set self.zoom-sb.enabled? = false
+
+    || コマンドボタン類
+    set self.tool-label.background = {Background {manifest-url "image", "PanelLabelNone"}}
+    set self.momentum-btn.control-color = {manifest-url "image", "ButtonNone"}
+    set self.momentum-btn.enabled? = false
+    set self.total-indication-btn.control-color = {manifest-url "image", "ButtonNone"}
+    set self.total-indication-btn.enabled? = false
+    set self.opetrace-btn.control-color = {manifest-url "image", "ButtonNone"}
+    set self.opetrace-btn.enabled? = false
+    
+    || 表示画面
+    {self.graphic.camera-motion-none}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose コントロールパネルの非活性化（操作履歴用）                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     コントロールパネルのボタンを非活性（操作履歴用）にします。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {all-button-deactive-opetrace}:void
+||--    set self.enabled? = false
+
+    set self.base-vbox.background = {Background {manifest-url "image", "ControlPanel"}}
+    
+||--    || ヘルプ
+||--    set self.help-btn.background = {Background {manifest-url "image", "ButtonNone"}}
+||--    set self.help-btn.enabled? = false
+    
+    || 移動
+    set self.move-label.background = {Background {manifest-url "image", "PanelLabel"}}
+    set self.move-box.background = {Background {manifest-url "image", "MoveBack"}}
+    set self.forward-btn.enabled? = true
+    set self.backward-btn.enabled? = true
+    set self.right-move-btn.enabled? = true
+    set self.left-move-btn.enabled? = true
+
+    || 視線変更
+    set self.view-label.background = {Background {manifest-url "image", "PanelLabel"}}
+    set self.view-box.background = {Background {manifest-url "image", "ViewBack"}}
+    set self.up-roll-btn.enabled? = true
+    set self.down-roll-btn.enabled? = true
+    set self.right-roll-btn.enabled? = true
+    set self.left-roll-btn.enabled? = true
+    set self.reset-roll-btn.enabled? = true
+    
+    || 振り向き
+    set self.turn-label.background = {Background {manifest-url "image", "PanelLabel"}}
+    set self.turn-box.background = {Background {manifest-url "image", "TurnBack"}}
+    set self.up-turn-btn.enabled? = true
+    set self.down-turn-btn.enabled? = true
+    set self.right-turn-btn.enabled? = true
+    set self.left-turn-btn.enabled? = true
+    set self.back-turn-btn.enabled? = true
+
+    || ズームバー
+    set self.zoom-label.background = {Background {manifest-url "image", "PanelLabelNone"}}
+    set self.zoom-sb.control-color = {manifest-url "image", "ButtonNone"}
+    set self.zoom-sb.enabled? = false
+
+    || コマンドボタン類
+    set self.tool-label.background = {Background {manifest-url "image", "PanelLabelNone"}}
+    set self.momentum-btn.control-color = {manifest-url "image", "ButtonNone"}
+    set self.momentum-btn.enabled? = false
+    set self.total-indication-btn.control-color = {manifest-url "image", "ButtonNone"}
+    set self.total-indication-btn.enabled? = false
+    set self.opetrace-btn.control-color = {manifest-url "image", "ButtonNone"}
+    set self.opetrace-btn.enabled? = false
+    
+    || 表示画面
+    {if {{ObjectManager.get-singleton}.read-model?} then
+        {self.graphic.camera-motion-ok}
+    }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose コントロールパネルの活性化                                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     コントロールパネルのボタンを活性にします。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {all-button-active}:void
+||--    set self.enabled? = true
+    
+    set self.base-vbox.background = {Background {manifest-url "image", "ControlPanel"}}
+    
+||--    || ヘルプ
+||--    set self.help-btn.background = {Background {manifest-url "image", "Button"}}
+||--    set self.help-btn.enabled? = true
+    
+    || 移動
+    set self.move-label.background = {Background {manifest-url "image", "PanelLabel"}}
+    set self.move-box.background = {Background {manifest-url "image", "MoveBack"}}
+    set self.forward-btn.enabled? = true
+    set self.backward-btn.enabled? = true
+    set self.right-move-btn.enabled? = true
+    set self.left-move-btn.enabled? = true
+
+    || 視線変更
+    set self.view-label.background = {Background {manifest-url "image", "PanelLabel"}}
+    set self.view-box.background = {Background {manifest-url "image", "ViewBack"}}
+    set self.up-roll-btn.enabled? = true
+    set self.down-roll-btn.enabled? = true
+    set self.right-roll-btn.enabled? = true
+    set self.left-roll-btn.enabled? = true
+    set self.reset-roll-btn.enabled? = true
+    
+    || 振り向き
+    set self.turn-label.background = {Background {manifest-url "image", "PanelLabel"}}
+    set self.turn-box.background = {Background {manifest-url "image", "TurnBack"}}
+    set self.up-turn-btn.enabled? = true
+    set self.down-turn-btn.enabled? = true
+    set self.right-turn-btn.enabled? = true
+    set self.left-turn-btn.enabled? = true
+    set self.back-turn-btn.enabled? = true
+
+    || ズームバー
+    set self.zoom-label.background = {Background {manifest-url "image", "PanelLabel"}}
+    set self.zoom-sb.control-color = {manifest-url "image", "Button"}
+    set self.zoom-sb.enabled? = true
+
+    || コマンドボタン類
+    set self.tool-label.background = {Background {manifest-url "image", "PanelLabel"}}
+    set self.momentum-btn.control-color = {manifest-url "image", "Button"}
+    set self.momentum-btn.enabled? = true
+    set self.total-indication-btn.control-color = {manifest-url "image", "Button"}
+    set self.total-indication-btn.enabled? = true
+    set self.opetrace-btn.control-color = {manifest-url "image", "Button"}
+    set self.opetrace-btn.enabled? = true
+    
+    || 表示画面
+    {if {{ObjectManager.get-singleton}.read-model?} then
+        {self.graphic.camera-motion-ok}
+    }
+  }
+  
+  
+}

@@ -1,0 +1,352 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+{define-class public KmlRootHandler {inherits DefaultHandler}
+  
+  field protected xmlns:#Url
+  field protected stack:{Array-of any}
+  {getter protected {last-stack}:any
+    {return 
+        {if self.stack.size > 0 then 
+            self.stack[self.stack.size - 1]
+         else
+            null
+        }
+    }
+  }
+
+  field protected temporary-object:any
+  {getter public {kml-document}:any
+    {return self.temporary-object}
+  }
+
+  field protected temporary-styles:{Array-of Style} = {{Array-of Style}}
+  {getter public {styles}:{Array-of Style}
+    {return self.temporary-styles}
+  }
+  
+  field protected temporary-origin:DocumentOrigin = {DocumentOrigin}
+  {getter public {origin}:DocumentOrigin
+    {return self.temporary-origin}
+  }
+  
+  field protected cdata:String = ""
+  
+  {constructor public {default}
+    set self.stack = {{Array-of any}}
+    {construct-super}
+  }
+  
+  {method public {start-document}:void }
+
+  {method public {end-document}:void }
+
+  {method public {start-element
+                     uri:String,
+                     name:String,
+                     qname:String,
+                     atts:Attributes
+                 }:void
+    {if qname == "kml" then
+        {if-non-null xmlns = {atts.get-value-by-qname "xmlns"} then
+            set self.xmlns = {url xmlns}
+        }
+        {self.stack.push {{Array-of Feature}}} || for test
+    }
+    
+    {with-compiler-directives allow-any-calls? = true do
+        {switch qname 
+         case "DocumentOrigin" do
+            {self.stack.push {DocumentOrigin}}
+         case "Style" do
+            {self.stack.push {Style {atts.get-value-by-qname "id"}}}
+         case "LineStyle" do
+            def v = {LineStyle}
+            set self.last-stack.line-style = v
+            {self.stack.push v}
+         case "PolyStyle" do
+            def v = {PolyStyle}
+            set self.last-stack.poly-style = v
+            {self.stack.push v}
+        }
+    }
+  }
+  
+  {method public {end-element uri:String, name:String, qname:String}:void 
+    
+    {with-compiler-directives
+        allow-implicit-any-casts? = true,
+        allow-any-calls? = true do
+        {switch qname
+         case "DocumentOrigin" do
+            def document-origin = {self.stack.pop}
+            set self.temporary-origin = document-origin
+         case "coordinates" do
+            {if self.last-stack isa DocumentOrigin then
+                def document-origin = self.last-stack
+                set document-origin.coordinate = {to-coordinate self.cdata}
+            }
+         case "Style" do
+            def color-style = {self.stack.pop}
+            {if-non-null color-style then || TODO: support Style in Placemark
+                {self.temporary-styles.append color-style}
+            }
+         case "LineStyle", "PolyStyle" do 
+            {self.stack.pop}
+         case "color" do
+            def color-style = self.last-stack
+            {type-switch color-style
+             case v:LineStyle do
+                set color-style.color = self.cdata
+             case v:PolyStyle do
+                set color-style.color = self.cdata
+            }
+         case "fill" do
+            set self.last-stack.fill = {to-bool self.cdata}
+         case "outline" do
+            set self.last-stack.outline = {to-bool self.cdata}
+        }
+    }
+
+    {if self.last-stack isa {Array-of Feature} and 
+        self.temporary-object isa Placemark
+     then
+        {with-compiler-directives allow-any-calls? = true do
+            {self.last-stack.append self.temporary-object}
+        }
+        set self.temporary-object = self.last-stack
+    }
+  }
+
+  {method public {characters ch:StringBuf, start:int, length:int}:void
+    set self.cdata = {ch.substr start, length}
+  }
+}
+
+
+
+|| FeatureHandler
+{define-class public FeatureHandler {inherits KmlRootHandler}
+
+  {constructor public {default}
+    {construct-super}
+  }
+  
+  {method public {start-element
+                     uri:String,
+                     name:String, 
+                     qname:String,
+                     atts:Attributes
+                 }:void
+
+    {super.start-element uri, name, qname, atts}
+  }
+
+  {method public {end-element uri:String, name:String, qname:String}:void
+
+    {if self.last-stack isa Feature then
+        def object = self.last-stack asa Feature
+        {switch qname
+         case "name" do
+            set object.name = self.cdata
+         case "visibility" do
+            set object.visibility = {to-bool self.cdata}
+         case "open" do
+            set object.open = {to-bool self.cdata}
+         case "address" do
+            set object.address = self.cdata
+         case "description" do
+            set object.description = self.cdata
+         case "styleUrl" do
+            set object.style-url = self.cdata
+            || TODO : other elements
+        }
+    }
+    {super.end-element uri, name, qname}
+  }
+}
+
+|| GeometryHandler
+{define-class public GeometryHandler 
+  {inherits FeatureHandler}
+
+  {constructor public {default}
+    {construct-super}
+  }
+
+  {method public {start-element
+                     uri:String,
+                     name:String, 
+                     qname:String,
+                     atts:Attributes
+                 }:void
+
+    {switch qname
+     case "Placemark" do
+        {self.stack.push {Placemark}}
+     case "MultiGeometry", "GeometryCollection" do
+        {self.stack.push {{Array-of Geometry}}}
+     case "Polygon" do
+        {self.stack.push {Polygon}}
+     case "outerBoundaryIs", "innerBoundaryIs" do
+        {self.stack.push {BoundaryIs}}
+     case "LinearRing" do
+        {self.stack.push {LinearRing}}
+     case "LineString" do
+        {self.stack.push {LineString}}
+    }
+    {super.start-element uri, name, qname, atts}
+  }
+
+  {method public {end-element
+                     uri:String,
+                     name:String,
+                     qname:String
+                 }:void
+
+    {if self.last-stack isa Geometry then
+        def object = self.last-stack || asa Geometry
+        {with-compiler-directives allow-any-calls? = true do
+            {switch qname
+             case "extrude" do
+                set object.extrude = {self.cdata.to-int}
+             case "tessellate" do
+                set object.tessellate = {to-bool self.cdata}
+             case "altitudeMode" do
+                set object.altitude-mode = {to-altitude-mode self.cdata}
+             case "coordinates" do
+                set object.coordinates = {to-coordinates self.cdata}
+            }
+        }
+
+     elseif self.last-stack isa BoundaryIs then
+        {with-compiler-directives allow-implicit-any-casts? = true do
+            set (self.last-stack asa BoundaryIs).linear-ring = self.temporary-object
+            set self.temporary-object = {self.stack.pop}
+            def object = self.last-stack asa Polygon
+            {if qname == "outerBoundaryIs" then
+                set object.outer-boundary-is = self.temporary-object
+             elseif qname == "innerBoundaryIs" then
+                {if object.inner-boundary-is == null then
+                    set object.inner-boundary-is = {{Array-of BoundaryIs}}
+                }
+                {object.inner-boundary-is.append self.temporary-object}
+            }
+        }
+    }
+
+    || 'Geometry's
+    {if qname == "Polygon" or qname == "LineString" or qname == "LinearRing" 
+     then
+        set self.temporary-object = {self.stack.pop}
+        {if self.last-stack isa {Array-of Geometry} then
+            def object = self.last-stack asa {Array-of Geometry}
+            {with-compiler-directives allow-implicit-any-casts? = true do
+                {object.append self.temporary-object}
+            }
+        }
+    }
+
+    {if qname == "Placemark" then
+        {if self.last-stack isa Placemark then
+            def object = self.last-stack asa Placemark
+            {with-compiler-directives allow-implicit-any-casts? = true do
+                set object.geometry = self.temporary-object
+            }
+        }
+        set self.temporary-object = {self.stack.pop}
+
+     elseif qname == "MultiGeometry" or qname == "GeometryCollection" then
+        set self.temporary-object = {self.stack.pop}
+    }
+
+    {super.end-element uri, name, qname}
+  }
+}
+
+
+
+|| convenient proc
+{define-proc package {to-bool s:String}:bool
+
+    {return
+        {if {s.trim-clone} == "1" then
+            true
+         else
+            false
+        }
+    }
+}
+
+{define-proc package {to-altitude-mode s:String}:AltitudeMode
+
+    {return 
+        {switch s 
+         case "relativeToGround" do
+            AltitudeMode.relative-to-grand
+         case "absolute" do
+            AltitudeMode.absolute
+         else "clampToGrand" || default
+            AltitudeMode.clamp-to-grand
+        }
+    }
+}
+
+{define-proc package {to-coordinate
+                         s:String
+                     }:{Tuple3-of double, double, double}
+
+    let coordinate:{Tuple3-of double, double, double} = {{Tuple3-of double, double, double} 0, 0, 0}
+    {for line in {{s.trim-clone}.split split-chars = {CharClass "\n"}} do
+        def coord-arr = {line.split split-chars = {CharClass ","}} do
+        set coordinate = {{Tuple3-of double, double, double}
+                             {coord-arr[0].to-double}, 
+                             {coord-arr[1].to-double}, 
+                             {if coord-arr.size == 3 then
+                                 {coord-arr[2].to-double}
+                              else
+                                 0
+                             }
+                         }
+    }
+    {return coordinate}
+}
+
+{define-proc package {to-coordinates
+                         s:String
+                     }:{Array-of {Tuple3-of double, double, double}}
+
+    def coordinates = {{Array-of {Tuple3-of double, double, double}}}
+    {for line in {{s.trim-clone}.split split-chars = {CharClass "\n"}} do
+        def coordinate = {line.split split-chars = {CharClass ","}} do
+        {coordinates.append 
+            {{Tuple3-of double, double, double} 
+                {coordinate[0].to-double}, 
+                {coordinate[1].to-double}, 
+                {if coordinate.size == 3 then
+                    {coordinate[2].to-double}
+                 else
+                    0
+                }
+            }
+        }
+    }
+    {return coordinates}
+}

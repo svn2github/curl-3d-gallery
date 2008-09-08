@@ -1,0 +1,183 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  遅延処理ボタン                                                           }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ボタンを離して一定時間経過した後にイベントを発生させるボタン
+                     （ボタンを離した時にもイベント処理を行うことができる。）
+                 }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public TimeoutEventButton {inherits CommandButton}
+  
+  |###|{doc-next {purpose 遅延時間}}|###|
+  field private _interval:Time
+  
+  |###|{doc-next {purpose 遅延後に実行される処理}}|###|
+  field private _timeout-porc:#{proc-type {button:int}:void}
+  
+  |###|{doc-next {purpose 押下時実行される処理}}|###|
+  field private _action-porc:#{proc-type {button:int}:void}
+  
+  |###|{doc-next {purpose タイマー}}|###|
+  field private _timer:#Timer
+  
+  |###|{doc-next {purpose ボタン表示するか？}
+         {notes
+             非表示でも、機能します。
+         }
+       }
+  |###|
+  field private _paint?:bool
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 遅延処理ボタンのコンストラクタ                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     初期処理を行う。                                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter interval, 遅延時間                                        }
+    {parameter paint?, ボタン表示するか？                                }
+  }
+  |######################################################################################|
+  {constructor public {default
+                          interval:Time,
+                          paint?:bool = true,
+                          ...}
+    set self._interval = interval
+    set self._paint? = paint?
+    {construct-super {splice ...}}
+    set self.control-color = {manifest-url "image", "Button"}
+    set self.color = control-text-color
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 遅延後に実行する処理を登録                                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     遅延後に実行する処理を登録する。                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter proc, 遅延後に実行する処理                                }
+  }
+  |######################################################################################|
+  {method public {set-timeout-proc
+                     proc:{proc-type {button:int}:void}
+                 }:void
+    set self._timeout-porc = proc
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ボタンを離した時に実行する処理を登録                        }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ボタンを離した時に実行する処理を登録する。          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter proc, ボタンを離した時に実行する処理                      }
+  }
+  |######################################################################################|
+  {method public {set-action-proc
+                     proc:{proc-type {button:int}:void}
+                 }:void
+    set self._action-porc = proc
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ボタンを離した時のイベント処理                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     タイマー未設定の場合、タイマーを生成し、ボタンを
+                     離した時の処理があれば、その処理を実行する。
+                     タイマーが設定されている場合は、ボタンを離した時の
+                     処理があれば、その処理を実行し、タイマーを有効と
+                     する。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter e, PointerReleaseイベント                                 }
+  }
+  |######################################################################################|
+  {method public {on-pointer-release
+                     e:PointerRelease}:void
+    {if not self.enabled? then  {return}}
+    {if-non-null self._timer then
+        {if self._timer.enabled? == false then
+            {if-non-null self._action-porc then
+                {self._action-porc e.button}
+            }
+            {self._timer.enable}
+        }
+     else
+        set self._timer = {Timer
+                              interval = self._interval,
+                              {on TimerEvent do
+                                  {if-non-null self._timeout-porc then
+                                      {self._timeout-porc e.button}
+                                      {self._timer.disable}
+                                  }
+                              }
+                          }
+        {if-non-null self._action-porc then
+            {self._action-porc e.button}
+        }
+        {self._timer.enable}
+    }
+    
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ボタン表示処理                                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ボタンが表示に設定されている場合、ボタンを表示します。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter ren, Renderer2d                                           }
+  }
+  |######################################################################################|
+  {method public {draw
+                     ren:Renderer2d}:void
+    {if self._paint? then
+        {super.draw ren}
+    }
+  }
+  
+  
+}

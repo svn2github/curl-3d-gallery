@@ -1,0 +1,137 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl 6.0 manifest}
+{curl-file-attributes character-encoding = "shift-jis"}
+{manifest ThreeD-Gallery}
+
+{component file start.curl,
+    location = "start.curl"
+}
+
+{component package UTIL,
+    location = "UTIL/load.scurl"
+}
+
+{component package SCENE,
+    location = "SCENE/load.scurl"
+}
+
+{component package CONTENTS,
+    location = "CONTENTS/load.scurl"
+}
+
+{component package MODEL,
+    location = "MODEL/load.scurl"
+}
+
+{component package ELEMENT,
+    location = "ELEMENT/load.scurl"
+}
+
+{component package COM.CURLAP.KML,
+    location = "KML/load.scurl"
+}
+
+{component package PRIMITIVE,
+    location = "PRIMITIVE/load.scurl"
+}
+
+{component package CONTROL,
+    location = "CONTROL/load.scurl"
+}
+
+{component directory _image,
+    location = "image"
+}
+
+{component directory _data,
+    location = "data"
+}
+
+{component directory _help,
+    location = "help"
+}
+
+{component directory _resources,
+    location = "resources"
+}
+
+{component image MenuBar,
+    location = "./image/MenuBar.jpg"
+}
+
+{component image MenuBarNone,
+    location = "./image/MenuBarNone.jpg"
+}
+
+{component image PanelLabel,
+    location = "./image/PanelLabel.jpg"
+}
+
+{component image PanelLabelNone,
+    location = "./image/PanelLabelNone.jpg"
+}
+
+{component image Button,
+    location = "./image/Button.jpg"
+}
+
+{component image ButtonNone,
+    location = "./image/ButtonNone.jpg"
+}
+
+{component image ControlPanel,
+    location = "./image/ControlPanel.jpg"
+}
+
+{component image ControlPanelNone,
+    location = "./image/ControlPanelNone.jpg"
+}
+
+{component image MoveBack,
+    location = "./image/MoveBack.jpg"
+}
+
+{component image MoveBackNone,
+    location = "./image/MoveBackNone.jpg"
+}
+
+{component image ViewBack,
+    location = "./image/ViewBack.jpg"
+}
+
+{component image ViewBackNone,
+    location = "./image/ViewBackNone.jpg"
+}
+
+{component image TurnBack,
+    location = "./image/TurnBack.jpg"
+}
+
+{component image TurnBackNone,
+    location = "./image/TurnBackNone.jpg"
+}
+
+{component image NoData,
+    location = "./image/no-data.jpg"
+}
+
+{component help Help,
+    location = "./help/help.html"
+}

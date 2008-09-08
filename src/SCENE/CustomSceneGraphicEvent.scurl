@@ -1,0 +1,815 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+
+|| イベント種類
+{define-enum CustomSceneGraphicEventType
+    movement-eyepoint,          || 位置移動
+    movement-viewpoint,         || 視線移動
+    movement-updown,            || 上下移動
+    camera-pan,                 || カメラ左右回転
+    camera-tilt,                || カメラ上下回転
+    movement-eye-view,          || 視点移動＋視線変更
+    exec-proc,                  || 処理実行
+    none                        || その他
+}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  SceneGraphicイベント                                                     }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     SceneGraphicイベント。
+                 }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public CustomSceneGraphicEvent
+  
+  |###|{doc-next {purpose イベント種類}}|###|
+  field private _event-type:CustomSceneGraphicEventType = CustomSceneGraphicEventType.none
+  
+  |###|{doc-next {purpose イベント識別ID}}|###|
+  field private _id:int = 0
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose SceneGraphicイベントのコンストラクタ                        }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     初期処理を行う。                                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter event-type, イベント種類                                  }
+  }
+  |######################################################################################|
+  {constructor public {default
+                          event-type:CustomSceneGraphicEventType = CustomSceneGraphicEventType.none,
+                          ...}
+    set self._event-type = event-type
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose イベント種類取得                                            }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     イベント種類を取得する。                            }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        イベント種類
+    }
+  }
+  |######################################################################################|
+  {getter public {event-type}:CustomSceneGraphicEventType
+    {return self._event-type}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose イベント識別ID取得                                          }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     イベント識別IDを取得する。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        イベント識別ID
+    }
+  }
+  |######################################################################################|
+  {getter public {id}:int
+    {return self._id}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose イベント識別ID設定                                          }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     イベント識別IDを設定する。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter ii, イベント識別ID                                        }
+  }
+  |######################################################################################|
+  {setter public {id ii:int}:void
+    set self._id = ii
+  }
+
+  
+}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  SceneGraphicイベント：移動                                               }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     SceneGraphicイベント：移動。
+                 }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public CustomSceneGraphicEyeMoveEvent {inherits CustomSceneGraphicEvent}
+  
+  |###|{doc-next {purpose マウス移動量Ｘ}}|###|
+  field private xx:double = 0.0
+  
+  |###|{doc-next {purpose マウス移動量Ｙ}}|###|
+  field private yy:double = 0.0
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose SceneGraphicイベント：移動のコンストラクタ                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     初期処理を行う。                                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter xx, マウス移動量Ｘ                                        }
+    {parameter yy, マウス移動量Ｙ                                        }
+  }
+  |######################################################################################|
+  {constructor public {default xx:double, yy:double, ...}
+    {construct-super
+        event-type = CustomSceneGraphicEventType.movement-eyepoint,
+        {splice ...}
+    }
+    
+    set self.xx = xx
+    set self.yy = yy
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose マウス移動量Ｘ取得                                          }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     マウス移動量Ｘを取得する。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        マウス移動量Ｘ
+    }
+  }
+  |######################################################################################|
+  {getter public {x}:double
+    {return self.xx}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose マウス移動量Ｙ取得                                          }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     マウス移動量Ｙを取得する。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        マウス移動量Ｙ
+    }
+  }
+  |######################################################################################|
+  {getter public {y}:double
+    {return self.yy}
+  }
+  
+  
+}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  SceneGraphicイベント：視線                                               }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     SceneGraphicイベント：視線。
+                 }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public CustomSceneGraphicViewMoveEvent {inherits CustomSceneGraphicEvent}
+  
+  |###|{doc-next {purpose マウス移動量Ｘ}}|###|
+  field private xx:double = 0.0
+  
+  |###|{doc-next {purpose マウス移動量Ｙ}}|###|
+  field private yy:double = 0.0
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose SceneGraphicイベント：視線のコンストラクタ                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     初期処理を行う。                                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter xx, マウス移動量Ｘ                                        }
+    {parameter yy, マウス移動量Ｙ                                        }
+  }
+  |######################################################################################|
+  {constructor public {default xx:double, yy:double, ...}
+    {construct-super
+        event-type = CustomSceneGraphicEventType.movement-viewpoint,
+        {splice ...}
+    }
+
+    set self.xx = xx
+    set self.yy = yy
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose マウス移動量Ｘ取得                                          }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     マウス移動量Ｘを取得する。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        マウス移動量Ｘ
+    }
+  }
+  |######################################################################################|
+  {getter public {x}:double
+    {return self.xx}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose マウス移動量Ｙ取得                                          }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     マウス移動量Ｙを取得する。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        マウス移動量Ｙ
+    }
+  }
+  |######################################################################################|
+  {getter public {y}:double
+    {return self.yy}
+  }
+  
+  
+}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  SceneGraphicイベント：上下移動                                           }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     SceneGraphicイベント：上下移動。
+                 }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public CustomSceneGraphicUpDownEvent {inherits CustomSceneGraphicEvent}
+  
+  |###|{doc-next {purpose 移動量}}|###|
+  field private zz:double = 0.0
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose SceneGraphicイベント：上下移動のコンストラクタ              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     初期処理を行う。                                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter zz, 移動量                                                }
+  }
+  |######################################################################################|
+  {constructor public {default zz:double, ...}
+    {construct-super
+        event-type = CustomSceneGraphicEventType.movement-updown,
+        {splice ...}
+    }
+
+    set self.zz = zz
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 移動量取得                                                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     移動量を取得する。                                  }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        移動量
+    }
+  }
+  |######################################################################################|
+  {getter public {z}:double
+    {return self.zz}
+  }
+  
+  
+}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  SceneGraphicイベント：カメラ左右移動                                     }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     SceneGraphicイベント：カメラ左右移動。
+                 }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public CustomSceneGraphicPanEvent {inherits CustomSceneGraphicEvent}
+  
+  |###|{doc-next {purpose 移動量}}|###|
+  field private _angle:Angle = 0.0deg
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose SceneGraphicイベント：カメラ左右移動のコンストラクタ        }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     初期処理を行う。                                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter angle, 移動量                                             }
+  }
+  |######################################################################################|
+  {constructor public {default angle:Angle, ...}
+    {construct-super
+        event-type = CustomSceneGraphicEventType.camera-pan,
+        {splice ...}
+    }
+
+    set self._angle = angle
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 移動量取得                                                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     移動量を取得する。                                  }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        移動量
+    }
+  }
+  |######################################################################################|
+  {getter public {angle}:Angle
+    {return self._angle}
+  }
+  
+  
+}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  SceneGraphicイベント：カメラ上下移動                                     }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     SceneGraphicイベント：カメラ上下移動。
+                 }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public CustomSceneGraphicTiltEvent {inherits CustomSceneGraphicEvent}
+  
+  field private _angle:Angle = 0.0deg
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose SceneGraphicイベント：カメラ上下移動のコンストラクタ        }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     初期処理を行う。                                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter angle, 移動量                                             }
+  }
+  |######################################################################################|
+  {constructor public {default angle:Angle, ...}
+    {construct-super
+        event-type = CustomSceneGraphicEventType.camera-tilt,
+        {splice ...}
+    }
+    
+    set self._angle = angle
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 移動量取得                                                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     移動量を取得する。                                  }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        移動量
+    }
+  }
+  |######################################################################################|
+  {getter public {angle}:Angle
+    {return self._angle}
+  }
+  
+  
+}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  SceneGraphicイベント：視点移動＋視線変更                                 }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     SceneGraphicイベント：座標指定移動＋視線変更。
+                 }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public CustomSceneGraphicEyeMoveViewChangeEvent {inherits CustomSceneGraphicEvent}
+  
+  |###|{doc-next {purpose 移動Ｘ座標}}|###|
+  field private _pos-x:Distance
+  
+  |###|{doc-next {purpose 移動Ｘ座標：有効性}}|###|
+  field private _pos-x?:bool
+  
+  |###|{doc-next {purpose 移動Ｙ座標}}|###|
+  field private _pos-y:Distance
+  
+  |###|{doc-next {purpose 移動Ｙ座標：有効性}}|###|
+  field private _pos-y?:bool
+  
+  |###|{doc-next {purpose 移動Ｚ座標}}|###|
+  field private _pos-z:Distance
+  
+  |###|{doc-next {purpose 移動Ｚ座標：有効性}}|###|
+  field private _pos-z?:bool
+  
+  |###|{doc-next {purpose 方位角}}|###|
+  field private _azimuth:Angle
+  
+  |###|{doc-next {purpose 方位角：有効性}}|###|
+  field private _azimuth?:bool
+  
+  |###|{doc-next {purpose 仰角}}|###|
+  field private _elevation:Angle
+  
+  |###|{doc-next {purpose 仰角：有効性}}|###|
+  field private _elevation?:bool
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose SceneGraphicイベント：視点移動＋視線変更のコンストラクタ    }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     初期処理を行う。                                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter pos-x, 視点Ｘ座標                                         }
+    {parameter pos-x?, 視点Ｘ座標：有効性                                }
+    {parameter pos-y, 視点Ｙ座標                                         }
+    {parameter pos-y?, 視点Ｙ座標：有効性                                }
+    {parameter pos-z, 視点Ｚ座標                                         }
+    {parameter pos-z?, 視点Ｚ座標：有効性                                }
+    {parameter azimuth, 方位角                                           }
+    {parameter azimuth?, 方位角：有効性                                  }
+    {parameter elevation, 仰角                                           }
+    {parameter elevation?, 仰角：有効性                                  }
+  }
+  |######################################################################################|
+  {constructor public {default
+                          pos-x:Distance,       pos-x?:bool,
+                          pos-y:Distance,       pos-y?:bool,
+                          pos-z:Distance,       pos-z?:bool,
+                          azimuth:Angle,        azimuth?:bool,
+                          elevation:Angle,      elevation?:bool,
+                          ...}
+    {construct-super
+        event-type = CustomSceneGraphicEventType.movement-eye-view,
+        {splice ...}
+    }
+    
+    set self._pos-x      = pos-x
+    set self._pos-x?     = pos-x?
+    set self._pos-y      = pos-y
+    set self._pos-y?     = pos-y?
+    set self._pos-z      = pos-z
+    set self._pos-z?     = pos-z?
+    set self._azimuth    = azimuth
+    set self._azimuth?   = azimuth?
+    set self._elevation  = elevation
+    set self._elevation? = elevation?
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 視点Ｘ座標取得                                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     視点Ｘ座標を取得する。                              }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        視点Ｘ座標
+    }
+  }
+  |######################################################################################|
+  {getter public {pos-x}:Distance
+    {return self._pos-x}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 視点Ｘ座標：有効性取得                                      }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     視点Ｘ座標：有効性を取得する。                      }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        視点Ｘ座標：有効性
+    }
+  }
+  |######################################################################################|
+  {getter public {pos-x?}:bool
+    {return self._pos-x?}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 視点Ｙ座標取得                                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     視点Ｙ座標を取得する。                              }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        視点Ｙ座標
+    }
+  }
+  |######################################################################################|
+  {getter public {pos-y}:Distance
+    {return self._pos-y}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 視点Ｙ座標：有効性取得                                      }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     視点Ｙ座標：有効性を取得する。                      }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        視点Ｙ座標：有効性
+    }
+  }
+  |######################################################################################|
+  {getter public {pos-y?}:bool
+    {return self._pos-y?}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 視点Ｚ座標取得                                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     視点Ｚ座標を取得する。                              }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        視点Ｚ座標
+    }
+  }
+  |######################################################################################|
+  {getter public {pos-z}:Distance
+    {return self._pos-z}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 視点Ｚ座標：有効性取得                                      }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     視点Ｚ座標：有効性を取得する。                      }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        視点Ｚ座標：有効性
+    }
+  }
+  |######################################################################################|
+  {getter public {pos-z?}:bool
+    {return self._pos-z?}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 方位角取得                                                  }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     方位角を取得する。                                  }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        方位角
+    }
+  }
+  |######################################################################################|
+  {getter public {azimuth}:Angle
+    {return self._azimuth}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 方位角：有効性取得                                          }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     方位角：有効性を取得する。                          }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        方位角：有効性
+    }
+  }
+  |######################################################################################|
+  {getter public {azimuth?}:bool
+    {return self._azimuth?}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 仰角取得                                                    }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     仰角を取得する。                                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        仰角
+    }
+  }
+  |######################################################################################|
+  {getter public {elevation}:Angle
+    {return self._elevation}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 仰角：有効性取得                                            }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     仰角：有効性を取得する。                            }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        仰角：有効性
+    }
+  }
+  |######################################################################################|
+  {getter public {elevation?}:bool
+    {return self._elevation?}
+  }
+  
+  
+}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  SceneGraphicイベント：処理実行                                           }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     SceneGraphicイベント：処理実行。
+                 }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public CustomSceneGraphicExecProcEvent {inherits CustomSceneGraphicEvent}
+  
+  |###|{doc-next {purpose 処理関数}}|###|
+  field private _proc:{proc-type {}:bool}
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose SceneGraphicイベント：処理実行のコンストラクタ              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     初期処理を行う。                                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter proc, 処理関数                                            }
+  }
+  |######################################################################################|
+  {constructor public {default proc:{proc-type {}:bool}, ...}
+    {construct-super
+        event-type = CustomSceneGraphicEventType.exec-proc,
+        {splice ...}
+    }
+    
+    set self._proc = proc
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 処理関数取得                                                }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     処理関数を取得する。                                }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {return-vals
+        処理関数
+    }
+  }
+  |######################################################################################|
+  {getter public {proc}:{proc-type {}:bool}
+    {return self._proc}
+  }
+  
+  
+}

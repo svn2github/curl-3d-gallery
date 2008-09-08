@@ -1,0 +1,654 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<translation-dictionary version="2">
+
+<string>
+<original></original>
+<translation></translation>
+</string>
+
+<string>
+<original>/</original>
+<translation>/</translation>
+</string>
+
+<string>
+<original>OK</original>
+<translation>OK</translation>
+</string>
+
+<string>
+<original>m</original>
+<translation>m</translation>
+</string>
+
+<string>
+<original>mm</original>
+<translation>mm</translation>
+</string>
+
+<string>
+<original>ms</original>
+<translation>ms</translation>
+</string>
+
+<string>
+<original>x1</original>
+<translation>x1</translation>
+</string>
+
+<string>
+<original>x20</original>
+<translation>x20</translation>
+</string>
+
+<string>
+<original>°</original>
+<translation>Deg</translation>
+</string>
+
+<string>
+<original>…</original>
+<translation>...</translation>
+</string>
+
+<string>
+<original>「イメージ」の値が未入力です。</original>
+<translation>Value of "Image" is non-input.</translation>
+</string>
+
+<string>
+<original>「オフセット」の値が不正です。</original>
+<translation>Value of "Offset" is dirty.</translation>
+</string>
+
+<string>
+<original>「オフセット」の値が未入力です。</original>
+<translation>Value of "Offset" is non-input.</translation>
+</string>
+
+<string>
+<original>「コメント」の値が未入力です。</original>
+<translation>Value of "Comment" is non-input.</translation>
+</string>
+
+<string>
+<original>「タイトル」の値が未入力です。</original>
+<translation>Value of "Title" is non-input.</translation>
+</string>
+
+<string>
+<original>「分割数」の値が不正です。</original>
+<translation>Value of "Number of Divide" is dirty.</translation>
+</string>
+
+<string>
+<original>「分割数」の値が未入力です。</original>
+<translation>Value of "Number of Divide" is non-input.</translation>
+</string>
+
+<string>
+<original>「幅」の値が不正です。</original>
+<translation>Value of "Width" is dirty.</translation>
+</string>
+
+<string>
+<original>「幅」の値が不正です。１００以上を指定してください。</original>
+<translation>Value of "Width" is dirty. Please appoint more than 100.</translation>
+</string>
+
+<string>
+<original>「幅」の値が未入力です。</original>
+<translation>Value of "Width" is non-input.</translation>
+</string>
+
+<string>
+<original>「時間間隔」の値が不正です。</original>
+<translation>Value of "Time Interval" is dirty.</translation>
+</string>
+
+<string>
+<original>「時間間隔」の値が未入力です。</original>
+<translation>Value of "Time Interval" is non-input.</translation>
+</string>
+
+<string>
+<original>「面」が指定されていません。</original>
+<translation>"Surface" is not appointed.</translation>
+</string>
+
+<string>
+<original>「高さ」の値が不正です。</original>
+<translation>Value of "Height" is dirty.</translation>
+</string>
+
+<string>
+<original>「高さ」の値が不正です。１００以上を指定してください。</original>
+<translation>Value of "Height" is dirty. Please appoint more than 100.</translation>
+</string>
+
+<string>
+<original>「高さ」の値が未入力です。</original>
+<translation>Value of "Height" is non-input.</translation>
+</string>
+
+<string>
+<original>「Ｘ座標」の値が不正です。</original>
+<translation>Value of "X coordinate" is dirty.</translation>
+</string>
+
+<string>
+<original>「Ｘ座標」の値が未入力です。</original>
+<translation>Value of "X coordinate" is non-input.</translation>
+</string>
+
+<string>
+<original>「Ｙ座標」の値が不正です。</original>
+<translation>Value of "Y coordinate" is dirty.</translation>
+</string>
+
+<string>
+<original>「Ｙ座標」の値が未入力です。</original>
+<translation>Value of "Y coordinate" is non-input.</translation>
+</string>
+
+<string>
+<original>アニメーション</original>
+<translation>Animation</translation>
+</string>
+
+<string>
+<original>イベント最大</original>
+<translation>Event Maximum</translation>
+</string>
+
+<string>
+<original>イメージ</original>
+<translation>Image</translation>
+</string>
+
+<string>
+<original>イメージファイル選択</original>
+<translation>Image File Choice</translation>
+</string>
+
+<string>
+<original>オフセット</original>
+<translation>Offset</translation>
+</string>
+
+<string>
+<original>カメラ リセット</original>
+<translation>Camera Reset</translation>
+</string>
+
+<string>
+<original>カメラ回転</original>
+<translation>Camera Turn</translation>
+</string>
+
+<string>
+<original>キャンセル</original>
+<translation>Cancel</translation>
+</string>
+
+<string>
+<original>クリップ面調整</original>
+<translation>Clip Side Adjustment</translation>
+</string>
+
+<string>
+<original>コメント</original>
+<translation>Comment</translation>
+</string>
+
+<string>
+<original>ズーム</original>
+<translation>Zoom</translation>
+</string>
+
+<string>
+<original>タイトル</original>
+<translation>Title</translation>
+</string>
+
+<string>
+<original>ツール</original>
+<translation>Tools</translation>
+</string>
+
+<string>
+<original>パラメータ設定</original>
+<translation>Parameter Setting</translation>
+</string>
+
+<string>
+<original>ファイル</original>
+<translation>File</translation>
+</string>
+
+<string>
+<original>ヘルプ</original>
+<translation>Help</translation>
+</string>
+
+<string>
+<original>マウス比率</original>
+<translation>Mouse Ratio</translation>
+</string>
+
+<string>
+<original>モデルファイルが読み込まれていません。</original>
+<translation>A Model file is not read.</translation>
+</string>
+
+<string>
+<original>モデル切り替え定義のモデル情報が不正です。</original>
+<translation>The Model Information of the model change definition is unjust.</translation>
+</string>
+
+<string>
+<original>モデル切り替え定義のリンク情報が不正です。</original>
+<translation>The Link Information of the model change definition is unjust.</translation>
+</string>
+
+<string>
+<original>モデル切り替え定義の操作履歴情報が不正です。</original>
+<translation>The Operation History of the model change definition is unjust.</translation>
+</string>
+
+<string>
+<original>モデル情報ファイル読み込み</original>
+<translation>Model Information file read</translation>
+</string>
+
+<string>
+<original>モデル情報読み込みで例外が発生しました。</original>
+<translation>An exception occurred including a Model Information reading.</translation>
+</string>
+
+<string>
+<original>モデル情報読込み</original>
+<translation>Model Information read</translation>
+</string>
+
+<string>
+<original>モデル情報読込みエラーが発生しました。</original>
+<translation>A Model Information reading error occurred.</translation>
+</string>
+
+<string>
+<original>リンクを新規に開く</original>
+<translation>open a link newly</translation>
+</string>
+
+<string>
+<original>リンク情報がありませんので、書き込みは行いません。</original>
+<translation>Because there is not Link Information, I do not write a note.</translation>
+</string>
+
+<string>
+<original>リンク情報ファイル書き込み</original>
+<translation>Link Information file write</translation>
+</string>
+
+<string>
+<original>リンク情報ファイル読み込み</original>
+<translation>Link Information file read</translation>
+</string>
+
+<string>
+<original>リンク情報リスト</original>
+<translation>list of Link Information</translation>
+</string>
+
+<string>
+<original>リンク情報書込み</original>
+<translation>Link Information Write</translation>
+</string>
+
+<string>
+<original>リンク情報設定</original>
+<translation>Link Information setting.</translation>
+</string>
+
+<string>
+<original>リンク情報読み込みで例外が発生しました。</original>
+<translation>An exception occurred including a Link Information reading.</translation>
+</string>
+
+<string>
+<original>リンク情報読込み</original>
+<translation>Link Information read</translation>
+</string>
+
+<string>
+<original>リンク情報読込みエラーが発生しました。</original>
+<translation>A Link Information reading error occurred.</translation>
+</string>
+
+<string>
+<original>中断</original>
+<translation>Interruption</translation>
+</string>
+
+<string>
+<original>仰角</original>
+<translation>Gun Elevation</translation>
+</string>
+
+<string>
+<original>位置</original>
+<translation>Position</translation>
+</string>
+
+<string>
+<original>全体表示</original>
+<translation>Total Indication</translation>
+</string>
+
+<string>
+<original>分割数</original>
+<translation>Number of Divide</translation>
+</string>
+
+<string>
+<original>削除</original>
+<translation>Delete</translation>
+</string>
+
+<string>
+<original>削除対象レコードを選択してください。</original>
+<translation>Please choose a deletion object record.</translation>
+</string>
+
+<string>
+<original>削除確認</original>
+<translation>Delete Confirm</translation>
+</string>
+
+<string>
+<original>右上座標を指示してください。</original>
+<translation>Please order top right corner coordinate.</translation>
+</string>
+
+<string>
+<original>右上座標指示</original>
+<translation>Top right Corner</translation>
+</string>
+
+<string>
+<original>回転量</original>
+<translation>Rotary Quantity</translation>
+</string>
+
+<string>
+<original>実行</original>
+<translation>Execute</translation>
+</string>
+
+<string>
+<original>実行状況</original>
+<translation>Practice Situation</translation>
+</string>
+
+<string>
+<original>履歴クリア確認</original>
+<translation>History Clear Confirm</translation>
+</string>
+
+<string>
+<original>左下座標を指示してください。</original>
+<translation>Please order lower left corner coordinate.</translation>
+</string>
+
+<string>
+<original>左下座標指示</original>
+<translation>Lower Left Corner</translation>
+</string>
+
+<string>
+<original>幅</original>
+<translation>Width</translation>
+</string>
+
+<string>
+<original>惰性モード</original>
+<translation>Momentum Mode</translation>
+</string>
+
+<string>
+<original>指示された面は配置面ではありませんでした。配置面上を指示してください。</original>
+<translation>The ordered aspect was not a placement aspect. Please order it on placement side.</translation>
+</string>
+
+<string>
+<original>振り向き</original>
+<translation>Swing</translation>
+</string>
+
+<string>
+<original>操作履歴</original>
+<translation>Operation History</translation>
+</string>
+
+<string>
+<original>操作履歴がありません。</original>
+<translation>There is not an operation history.</translation>
+</string>
+
+<string>
+<original>操作履歴がありませんので、書き込みは行いません。</original>
+<translation>Because there is not an operation history, I do not write a note.</translation>
+</string>
+
+<string>
+<original>操作履歴クリア</original>
+<translation>Operation History Clear</translation>
+</string>
+
+<string>
+<original>操作履歴再生</original>
+<translation>Play Operation History</translation>
+</string>
+
+<string>
+<original>操作履歴情報を削除します。よろしいですか？</original>
+<translation>delete operation history information. Are you all right?</translation>
+</string>
+
+<string>
+<original>操作履歴情報ファイル書き込み</original>
+<translation>Operation History File Write</translation>
+</string>
+
+<string>
+<original>操作履歴情報ファイル読み込み</original>
+<translation>Operation History File Read</translation>
+</string>
+
+<string>
+<original>操作履歴数</original>
+<translation>Number of Operation History</translation>
+</string>
+
+<string>
+<original>操作履歴書込み</original>
+<translation>Operation History Write</translation>
+</string>
+
+<string>
+<original>操作履歴登録</original>
+<translation>Operation History Registration</translation>
+</string>
+
+<string>
+<original>操作履歴読み込みで例外が発生しました。</original>
+<translation>An exception occurred including a Operation History reading.</translation>
+</string>
+
+<string>
+<original>操作履歴読込み</original>
+<translation>Operation History Read</translation>
+</string>
+
+<string>
+<original>操作履歴読込みエラーが発生しました。</original>
+<translation>An operation history reading error occurred.</translation>
+</string>
+
+<string>
+<original>方位角</original>
+<translation>Magnetic</translation>
+</string>
+
+<string>
+<original>方向</original>
+<translation>Direction</translation>
+</string>
+
+<string>
+<original>更新間隔</original>
+<translation>Update Interval</translation>
+</string>
+
+<string>
+<original>移動</original>
+<translation>Movement</translation>
+</string>
+
+<string>
+<original>移動先を指示してください。</original>
+<translation>Please order movement.</translation>
+</string>
+
+<string>
+<original>移動量</original>
+<translation>Quantity of movement</translation>
+</string>
+
+<string>
+<original>編集</original>
+<translation>Edit</translation>
+</string>
+
+<string>
+<original>編集対象レコードを選択してください。</original>
+<translation>Please choose an editing object record.</translation>
+</string>
+
+<string>
+<original>繰り返し再生</original>
+<translation>Repetition Play</translation>
+</string>
+
+<string>
+<original>自動登録</original>
+<translation>Automatic Registration</translation>
+</string>
+
+<string>
+<original>視野角</original>
+<translation>Angle of field</translation>
+</string>
+
+<string>
+<original>設定</original>
+<translation>Setting</translation>
+</string>
+
+<string>
+<original>近クリップ面</original>
+<translation>Near Clip Side</translation>
+</string>
+
+<string>
+<original>遠クリップ面</original>
+<translation>Far Clip Side</translation>
+</string>
+
+<string>
+<original>選択されているレコードの情報を削除します。よろしいですか？</original>
+<translation>I delete the information of a chosen record. Are you all right?</translation>
+</string>
+
+<string>
+<original>配置面</original>
+<translation>Surface</translation>
+</string>
+
+<string>
+<original>配置面、Ｘ、Ｙが指示されていません。先に、配置面、Ｘ、Ｙを指示してください。</original>
+<translation>Surface, X, Y are not ordered. Please order Surface, X, Y earlier.</translation>
+</string>
+
+<string>
+<original>配置面が指示されていません。先に、配置面を指示してください。</original>
+<translation>Surface is not ordered. Please order Surface earlier.</translation>
+</string>
+
+<string>
+<original>配置面を指示してください。</original>
+<translation>Please order Surface.</translation>
+</string>
+
+<string>
+<original>配置面指示</original>
+<translation>Surface Instructions</translation>
+</string>
+
+<string>
+<original>閉じる</original>
+<translation>Close</translation>
+</string>
+
+<string>
+<original>霧効果</original>
+<translation>Fog Effect</translation>
+</string>
+
+<string>
+<original>霧終了距離</original>
+<translation>Fog End Distance</translation>
+</string>
+
+<string>
+<original>霧開始距離</original>
+<translation>Fog Start Distance</translation>
+</string>
+
+<string>
+<original>高さ</original>
+<translation>Height</translation>
+</string>
+
+<string>
+<original>３次元ギャラリー</original>
+<translation>3D-Gallery</translation>
+</string>
+
+<string>
+<original>ＩＤ</original>
+<translation>ID</translation>
+</string>
+
+<string>
+<original>ＵＲＬ</original>
+<translation>URL</translation>
+</string>
+
+<string>
+<original>Ｘ座標</original>
+<translation>X Coordinate</translation>
+</string>
+
+<string>
+<original>Ｙ座標</original>
+<translation>Y Coordinate</translation>
+</string>
+
+<string>
+<original>Ｚ座標</original>
+<translation>Z Coordinate</translation>
+</string>
+
+</translation-dictionary>

@@ -1,0 +1,175 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  操作履歴のコンテンツハンドラ                                             }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     操作履歴のXML読み込みの為のコンテンツハンドラ
+                 }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public OpeTraceHandler {inherits DefaultHandler}
+  
+  |###|{doc-next {purpose 操作履歴の配列}}|###|
+  field public ope-traces:{Array-of OpeTraceObject}
+  
+  |###|{doc-next {purpose 操作履歴の一時保管領域}}|###|
+  field private ope-trace:OpeTraceObject
+  
+  |###|{doc-next {purpose 作業用StringBuf}}|###|
+  field private data:StringBuf
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 操作履歴のコンテンツハンドラのコンストラクタ               }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     初期処理を行う。                                    }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {constructor public {default}
+    set self.ope-traces = {new {Array-of OpeTraceObject}}
+    set self.ope-trace = {OpeTraceObject}
+    set self.data = {StringBuf}
+    {construct-super}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ドキュメントの開始処理                                      }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ドキュメントの開始処理を行う。                      }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {start-document}:void
+    {self.ope-traces.clear}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 要素の開始処理                                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     要素の開始処理を行う。                              }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {start-element
+                     uri:String,
+                     name:String,
+                     qname:String,
+                     atts:Attributes
+                 }:void
+    
+    {switch qname
+     case "OpeTrace" do
+        set self.ope-trace = {OpeTraceObject}
+    }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 文字データ処理                                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     文字データ処理を行う。                              }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {characters
+                     ch:StringBuf,
+                     start:int,
+                     length:int
+                 }:void
+    {self.data.clear}
+    {self.data.concat {ch.substr start, length}}
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose 要素の終了処理                                              }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     要素の終了処理を行う。                              }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {end-element
+                     uri:String,
+                     name:String,
+                     qname:String
+                 }:void
+    
+    {with-compiler-directives allow-any-calls? = true do
+        
+        {switch qname
+         case "OpeTrace" do
+            let para-array:StringArray = {self.data.split split-chars = ","}
+            {for str:String key ii in para-array do
+                {switch ii
+                 case 0 do  set self.ope-trace.interval         = {str.to-double}
+                 case 1 do  set self.ope-trace.xx               = {str.to-double}
+                 case 2 do  set self.ope-trace.yy               = {str.to-double}
+                 case 3 do  set self.ope-trace.zz               = {str.to-double}
+                 case 4 do  set self.ope-trace.azimuth          = {str.to-double}
+                 case 5 do  set self.ope-trace.elevation        = {str.to-double}
+                 case 6 do  set self.ope-trace.divide-count     = {str.to-int}
+                }
+            }
+            {self.ope-traces.append self.ope-trace}
+        }
+        
+    }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose ドキュメント終了処理                                        }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     ドキュメント終了処理を行う。                        }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {end-document}:void
+  }
+  
+  
+}

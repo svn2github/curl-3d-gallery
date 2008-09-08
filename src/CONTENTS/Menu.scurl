@@ -1,0 +1,319 @@
+||| Copyright (C) 1998-2008, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @author Hideki Omatsu
+|||
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+
+|########################################################################################|
+{doc-next
+    {purpose  メニュー                                                                 }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     メニューを作成します。                }
+                 {item {code 備考}  ： 特になし。          }
+                 {item {code 環境}  ： Surge6.0            }
+                 {item {code 新規}  ： 2008/08/31 尾松秀紀 
+                     新規作成                              }
+                 {item {code 変更}  ：                     }
+                 {item {code V/R }  ： 01/01               }
+                 {item {code Copyright(c)} SCS 2008        }
+                 {item {code Author}： 株式会社ベーシック  }}}
+}
+|########################################################################################|
+{define-class public Menu {inherits MenuBar}
+  
+  |###|{doc-next {purpose SceneGraphic}}|###|
+  field private graphic:CustomSceneGraphic
+  
+  |###|{doc-next {purpose SubMenu：メニュー：ファイル}}|###|
+  field private submanu-file:SubMenu
+  
+  |###|{doc-next {purpose SubMenu：メニュー：編集}}|###|
+  field private submanu-edit:SubMenu
+  
+  |###|{doc-next {purpose SubMenu：メニュー：設定}}|###|
+  field private submanu-setting:SubMenu
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose メニューを作成します。                                      }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     メニューを作成する。                                }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+    {parameter graphic, CustomSceneGraphic                               }
+    {parameter edit-mode?, エディットモードか？
+        エディットモードの場合、各種編集用ボタンを表示する               }
+  }
+  |######################################################################################|
+  {constructor {default
+                   graphic:CustomSceneGraphic,
+                   edit-mode?:bool
+               }
+
+    set self.graphic = graphic
+    
+    set self.submanu-file = {SubMenu label = {lmessage ファイル},
+                                {MenuAction
+                                    label = {lmessage モデル情報読込み},
+                                    {on Action do
+                                        {try
+                                            {{Contents.get-singleton}.all-button-deactive}
+                                            {{Contents.get-singleton}.all-menu-deactive}
+                                            
+                                            let obj-man:ObjectManager = {ObjectManager.get-singleton}
+                                            
+                                            || ファイル読込み
+                                            let fname:String = {obj-man.read-model self.graphic}
+                                            {if not fname.empty? then
+                                                {{Contents.get-singleton}.controller.unvisible-opetrace-button}
+                                            }
+                                         catch e:Exception do
+                                            {Utility.popup-msg {lmessage モデル情報読込みエラーが発生しました。}}
+                                            {log4c.error e.value}
+                                         finally
+                                            {{Contents.get-singleton}.all-menu-active}
+                                            {{Contents.get-singleton}.all-button-active}
+                                        }
+                                    }
+                                },
+                                {menu-separator},
+                                {MenuAction
+                                    label = {lmessage リンク情報読込み},
+                                    {on Action do
+                                        {try
+                                            {{Contents.get-singleton}.all-button-deactive}
+                                            {{Contents.get-singleton}.all-menu-deactive}
+                                            let fname:String = {{ObjectManager.get-singleton}.read-info self.graphic}
+                                         catch e:Exception do
+                                            {Utility.popup-msg {lmessage リンク情報読込みエラーが発生しました。}}
+                                            {log4c.error e.value}
+                                         finally
+                                            {{Contents.get-singleton}.all-menu-active}
+                                            {{Contents.get-singleton}.all-button-active}
+                                        }
+                                    }
+                                },
+                                {MenuAction
+                                    label = {lmessage リンク情報書込み},
+                                    {on Action do
+                                        {{ObjectManager.get-singleton}.write-info}
+                                    }
+                                },
+                                {menu-separator},
+                                {MenuAction
+                                    label = {lmessage 操作履歴読込み},
+                                    {on Action do
+                                        {try
+                                            {{Contents.get-singleton}.all-button-deactive}
+                                            {{Contents.get-singleton}.all-menu-deactive}
+                                            let fname:String = {{ObjectManager.get-singleton}.read-opetrace self.graphic}
+                                            {if not fname.empty? then
+                                                {{Contents.get-singleton}.controller.visible-opetrace-button}
+                                            }
+                                         catch e:Exception do
+                                            {Utility.popup-msg {lmessage 操作履歴読込みエラーが発生しました。}}
+                                            {log4c.error e.value}
+                                         finally
+                                            {{Contents.get-singleton}.all-menu-active}
+                                            {{Contents.get-singleton}.all-button-active}
+                                        }
+                                    }
+                                },
+                                {MenuAction
+                                    label = {lmessage 操作履歴書込み},
+                                    {on Action do
+                                        {{ObjectManager.get-singleton}.write-opetrace}
+                                    }
+                                }
+                            }
+    
+    set self.submanu-edit = {SubMenu label = {lmessage 編集},
+                                {MenuAction
+                                    label = {lmessage リンク情報設定},
+                                    {on Action do
+                                        {if not {{ObjectManager.get-singleton}.read-model?} then
+                                            {Utility.popup-msg {lmessage モデルファイルが読み込まれていません。}}
+                                            {return}
+                                        }
+                                        
+                                        let dlg:LinkInfoEditDialog = {LinkInfoEditDialog self.graphic}
+                                        {dlg.show}
+                                        {self.graphic.update-drawable}
+                                    }
+                                },
+                                {MenuAction
+                                    label = {lmessage リンク情報リスト},
+                                    {on Action do
+                                        {if not {{ObjectManager.get-singleton}.read-model?} then
+                                            {Utility.popup-msg {lmessage モデルファイルが読み込まれていません。}}
+                                            {return}
+                                        }
+                                        
+                                        let dlg:LinkInfoListDialog = {LinkInfoListDialog self.graphic}
+                                        {dlg.show}
+                                        {self.graphic.update-drawable}
+                                    }
+                                },
+                                {menu-separator},
+                                {menu-separator},
+                                {MenuAction
+                                    label = {lmessage 操作履歴登録},
+                                    {on Action do
+                                        {if not {{ObjectManager.get-singleton}.read-model?} then
+                                            {Utility.popup-msg {lmessage モデルファイルが読み込まれていません。}}
+                                            {return}
+                                        }
+                                        
+                                        || ズームを戻す処理
+                                        {{Contents.get-singleton}.controller.reset-zoom}
+
+                                        || メニュー・コントロールパネルを非活性にする
+                                        {{Contents.get-singleton}.controller.all-button-deactive-opetrace}
+                                        {{Contents.get-singleton}.all-menu-deactive}
+                                        
+                                        {{ObjectManager.get-singleton}.disp-operation-history-dialog
+                                            self.graphic,
+                                            {proc {}:bool
+                                                || メニュー・コントロールパネルを活性に戻す
+                                                {{Contents.get-singleton}.all-menu-active}
+                                                {{Contents.get-singleton}.all-button-active}
+                                                {if {{ObjectManager.get-singleton}.get-operation-history-count} > 0 then
+                                                    {{Contents.get-singleton}.controller.visible-opetrace-button}
+                                                }
+                                                {return true}
+                                            }}
+                                    }
+                                },
+                                {MenuAction
+                                    label = {lmessage 操作履歴再生},
+                                    {on Action do
+                                        {if not {{ObjectManager.get-singleton}.read-model?} then
+                                            {Utility.popup-msg {lmessage モデルファイルが読み込まれていません。}}
+                                            {return}
+                                        }
+
+                                        || ズームを戻す処理
+                                        {{Contents.get-singleton}.controller.reset-zoom}
+                                        
+                                        {{Contents.get-singleton}.all-button-deactive}
+                                        {{Contents.get-singleton}.all-menu-deactive}
+                                        {{ObjectManager.get-singleton}.disp-operation-history-playing-dialog
+                                            self.graphic,
+                                            {proc {}:bool
+                                                || メニュー・コントロールパネルを活性に戻す
+                                                {{Contents.get-singleton}.all-menu-active}
+                                                {{Contents.get-singleton}.all-button-active}
+                                                {return true}
+                                            }}
+                                    }
+                                },
+                                {menu-separator},
+                                {MenuAction
+                                    label = {lmessage 操作履歴クリア},
+                                    {on Action do
+                                        {if not {{ObjectManager.get-singleton}.read-model?} then
+                                            {Utility.popup-msg {lmessage モデルファイルが読み込まれていません。}}
+                                            {return}
+                                        }
+                                        
+                                        let result:String = {Utility.popup-msg
+                                                                cancel? = true,
+                                                                title = {lmessage 履歴クリア確認},
+                                                                {lmessage 操作履歴情報を削除します。よろしいですか？}}
+                                        {if {result.equal? Dialog.ok} then
+                                            {{ObjectManager.get-singleton}.clear-operation-history}
+                                            {{Contents.get-singleton}.controller.unvisible-opetrace-button}
+                                        }
+                                    }
+                                }
+                            }
+    
+    set self.submanu-setting = {SubMenu label = {lmessage 設定},
+                                   {MenuAction
+                                       label = {lmessage カメラ リセット},
+                                       {on Action do
+                                           {self.graphic.reset-camera}
+                                           {self.graphic.update-drawable}
+                                       }
+                                   },
+                                   {MenuAction
+                                       label = {lmessage パラメータ設定},
+                                       {on Action do
+                                           let dlg:CameraParameterDialog = {CameraParameterDialog self.graphic}
+                                           {dlg.show}
+                                           {self.graphic.update-drawable}
+                                       }
+                                   }
+                               }
+    
+    {construct-super
+        height = 6mm,
+        use-look-and-feel? = false,
+        control-color = "transparent",
+        background = {manifest-url "image", "MenuBar"},
+        color = Contents.text-color,
+        self.submanu-file,
+        self.submanu-edit,
+        self.submanu-setting
+    }
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose メニューの非活性化                                          }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     メニューを非活性にします。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {all-deactive}:void
+    set self.cursor = cursor-wait-arrow
+    set self.background = {manifest-url "image", "MenuBarNone"}
+    set self.enabled? = false
+    set self.submanu-file.enabled? = false
+    set self.submanu-edit.enabled? = false
+    set self.submanu-setting.enabled? = false
+  }
+  
+  
+  |######################################################################################|
+  {doc-next 
+    {purpose メニューの活性化                                            }
+    {details {itemize
+                 {item {code 解説}  ： 
+                     メニューを活性にします。
+                 }
+                 {item {code 新規}  :  2008/08/31 尾松秀紀               }}}
+  }
+  |######################################################################################|
+  {method public {all-active}:void
+    set self.cursor = cursor-arrow
+    set self.background = {manifest-url "image", "MenuBar"}
+    set self.enabled? = true
+    set self.submanu-file.enabled? = true
+    set self.submanu-edit.enabled? = true
+    set self.submanu-setting.enabled? = true
+  }
+  
+  
+}
