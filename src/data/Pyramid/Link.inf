@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LinkImageInfoDoc>
+  <Document>
+    <LinkImageInfo>
+      <id>14</id>
+      <title>back to museum</title>
+      <face>359</face>
+      <xx>47848</xx>
+      <yy>5492</yy>
+      <ww>2391</ww>
+      <hh>2182</hh>
+      <offset>100</offset>
+      <image>../image/HH141.jpg</image>
+      <jump>ChangeModel:data/Museum/doc.kml:data/Museum/Link.inf::1:0.1</jump>
+      <info>Museumモデルに戻ります。</info>
+    </LinkImageInfo>
+    <LinkImageInfo>
+      <id>15</id>
+      <title>up elevator</title>
+      <face>323</face>
+      <xx>4000</xx>
+      <yy>1094</yy>
+      <ww>400</ww>
+      <hh>400</hh>
+      <offset>-200</offset>
+      <image>../image/07_s.jpg</image>
+      <jump>Elevator:26003:2000:100</jump>
+      <info>「上にまいりまぁ～す。」
+もっと近づいてください。</info>
+    </LinkImageInfo>
+    <LinkImageInfo>
+      <id>16</id>
+      <title>down elevator</title>
+      <face>335</face>
+      <xx>700</xx>
+      <yy>1505</yy>
+      <ww>400</ww>
+      <hh>400</hh>
+      <offset>-200</offset>
+      <image>../image/04_s.jpg</image>
+      <jump>Elevator:-26003:2000:100</jump>
+      <info>「下にまいりまぁ～す」
+もっと近づいてください。</info>
+    </LinkImageInfo>
+  </Document>
+</LinkImageInfoDoc>

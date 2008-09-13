@@ -53,7 +53,7 @@
                                               {item Curlコントロールパネルが開いたら　『セキュリティ』タブを選択して、『ホスト追加』ボタンをクリック。}
                                               {item アプリケーションを提供しているホスト名を、{bold color = "red" , http://を抜いた形で入力し}、OKを押します。
                                                   {br} * 例えば、http://developers.curlap.com/test/start.curl 
-                                                  ならば developers.curlap.com/testです。}
+                                                  ならば developers.curlap.comです。}
                                           }
                                       },
                                       {Fill height = 15pt},
